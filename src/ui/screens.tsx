@@ -100,28 +100,30 @@ export function MapScreen(props: {
   const [selectedId, setSelectedId] = useState(props.run.startRegionId);
   const attackable = new Set(attackableRegionIds(props.run));
   const conquered = new Set(props.run.conqueredRegionIds);
-  const selected = props.run.regions.find((region) => region.id === selectedId) ?? props.run.regions[0];
+  const regionState = (regionId: string, hopHome: boolean) => {
+    if (hopHome) return 'home';
+    if (conquered.has(regionId)) return 'conquered';
+    if (attackable.has(regionId)) return 'attackable';
+    return 'locked';
+  };
+  const visibleRegions = props.run.regions.filter((region) => regionState(region.id, region.id === props.run.startRegionId) !== 'locked');
+  const selected = visibleRegions.find((region) => region.id === selectedId)
+    ?? visibleRegions.find((region) => region.id === props.run.startRegionId)
+    ?? visibleRegions[0];
+  if (!selected) return null;
   const deity = props.catalog.deities[props.catalog.deityIndex.get(selected.deityId)!];
-  const bounds = useMemo(() => {
-    const points = props.run.regions.flatMap((region) => region.polygon);
-    const xs = points.map((point) => point[0]);
-    const ys = points.map((point) => point[1]);
-    const minX = Math.min(...xs) - 24;
-    const minY = Math.min(...ys) - 24;
-    return { minX, minY, width: Math.max(...xs) - minX + 24, height: Math.max(...ys) - minY + 24 };
-  }, [props.run.regions]);
+  const points = visibleRegions.flatMap((region) => region.polygon);
+  const xs = points.map((point) => point[0]);
+  const ys = points.map((point) => point[1]);
+  const minX = Math.min(...xs) - 24;
+  const minY = Math.min(...ys) - 24;
+  const bounds = { minX, minY, width: Math.max(...xs) - minX + 24, height: Math.max(...ys) - minY + 24 };
 
   return (
     <div className="map-layout">
       <svg className="map" viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`} role="img" aria-label="World map">
-        {props.run.regions.map((region) => {
-          const state = region.id === props.run.startRegionId
-            ? 'home'
-            : conquered.has(region.id)
-              ? 'conquered'
-              : attackable.has(region.id)
-                ? 'attackable'
-                : 'locked';
+        {visibleRegions.map((region) => {
+          const state = regionState(region.id, region.id === props.run.startRegionId);
           const god = props.catalog.deities[props.catalog.deityIndex.get(region.deityId)!];
           return (
             <g key={region.id}>
@@ -488,17 +490,46 @@ export function OutcomeScreen(props: { run: RunState; onHome: () => void }) {
   );
 }
 
+export function DeckScreen(props: { run: RunState; catalog: Catalog; profile: Profile }) {
+  const battle = props.run.battle;
+  const placeOf = (motifId: string) => {
+    if (!battle) return null;
+    if (battle.visibleHandIds.includes(motifId)) return 'In hand';
+    if (battle.drawPileIds.includes(motifId)) return 'Draw pile';
+    if (battle.discardPileIds.includes(motifId)) return 'Discarded';
+    if (battle.playedPileIds.includes(motifId)) return 'Played';
+    return null;
+  };
+  return (
+    <section>
+      <h2>Deck</h2>
+      <p className="meta">{props.run.deckMotifIds.length} cards. A rank appears after the card is played.</p>
+      <div className="catalog-grid">
+        {props.run.deckMotifIds.map((id) => {
+          const place = placeOf(id);
+          return (
+            <div key={id} className="deck-slot">
+              <MotifCard catalog={props.catalog} profile={props.profile} motifId={id} />
+              {place && <p className="meta">{place}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function EncyclopediaScreen(props: { catalog: Catalog; profile: Profile }) {
   const [tab, setTab] = useState<'motifs' | 'texts'>('motifs');
   const [query, setQuery] = useState('');
-  const [showAll, setShowAll] = useState(false);
   const needle = query.trim().toLowerCase();
+  const seenCount = props.catalog.motifs.filter((motif) => props.profile.encounteredMotifIds.includes(motif.id) || props.profile.discoveredMotifIds.includes(motif.id)).length;
   const motifs = props.catalog.motifs.filter((motif) => {
     const seen = props.profile.encounteredMotifIds.includes(motif.id) || props.profile.discoveredMotifIds.includes(motif.id);
-    if (!showAll && !seen) return false;
+    if (!seen) return false;
     if (!needle) return true;
-    return motif.name.toLowerCase().includes(needle) || motif.id.toLowerCase().includes(needle);
-  }).slice(0, 80);
+    return motif.name.toLowerCase().includes(needle);
+  });
   const texts = props.catalog.texts.filter((text) => props.profile.discoveredTextIds.includes(text.id));
   return (
     <section>
@@ -510,9 +541,8 @@ export function EncyclopediaScreen(props: { catalog: Catalog; profile: Profile }
         <>
           <div className="row">
             <label>Search<input value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-            <button onClick={() => setShowAll((value) => !value)}>{showAll ? 'Showing catalog' : 'Showing encountered'}</button>
           </div>
-          <p className="meta">{props.profile.discoveredMotifIds.length} discovered of {props.catalog.motifs.length}</p>
+          <p className="meta">{props.profile.discoveredMotifIds.length} discovered · {seenCount} encountered</p>
           <div className="catalog-grid">
             {motifs.map((motif) => (
               <MotifCard key={motif.id} catalog={props.catalog} profile={props.profile} motifId={motif.id} />

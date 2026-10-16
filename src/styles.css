@@ -215,6 +215,8 @@ input, select {
 
 .card.dim { filter: saturate(0.15) brightness(0.7); }
 
+.deck-slot .meta { margin: 0.25rem 0 0.6rem; }
+
 .chip-pop {
   position: absolute;
   z-index: 2;

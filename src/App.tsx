@@ -17,6 +17,7 @@ import { emptyProfile, reconcileProfile } from './progression';
 import type { BalanceConfig, Catalog, LastPlay, Profile, RunState, SimilarityTables, UpgradeAllocation } from './types';
 import {
   BattleScreen,
+  DeckScreen,
   EncyclopediaScreen,
   HomeScreen,
   MapScreen,
@@ -26,10 +27,11 @@ import {
   ScoreCeremony,
 } from './ui/screens';
 
-type View = 'auto' | 'home' | 'encyclopedia' | 'progression';
+type View = 'auto' | 'home' | 'encyclopedia' | 'progression' | 'deck';
 
 function screenFor(view: View, run: RunState | null): View | 'map' | 'battle' | 'reward' | 'outcome' {
-  if (view === 'encyclopedia' || view === 'progression' || view === 'home') return view;
+  if (view === 'deck' && !run) return 'home';
+  if (view === 'encyclopedia' || view === 'progression' || view === 'home' || view === 'deck') return view;
   if (!run) return 'home';
   if (run.status === 'won' || run.status === 'lost') return 'outcome';
   if (run.pendingRewardRegionId) return 'reward';
@@ -147,6 +149,12 @@ export function App() {
           {run?.status === 'active' && !run.pendingRewardRegionId && !run.battle && (
             <button onClick={() => setView('auto')}>Map</button>
           )}
+          {run?.status === 'active' && view !== 'auto' && view !== 'home' && (
+            <button onClick={() => setView('auto')}>
+              {run.pendingRewardRegionId ? 'Reward' : run.battle?.status === 'active' ? 'Battle' : 'Map'}
+            </button>
+          )}
+          {run && <button onClick={() => setView('deck')}>Deck</button>}
           <button onClick={() => setView('encyclopedia')}>Encyclopedia</button>
           <button onClick={() => setView('progression')}>Progression</button>
         </nav>
@@ -205,6 +213,7 @@ export function App() {
               />
             )}
             {screen === 'outcome' && run && <OutcomeScreen run={run} onHome={() => setView('home')} />}
+            {screen === 'deck' && run && <DeckScreen run={run} catalog={catalog} profile={profile} />}
             {screen === 'encyclopedia' && <EncyclopediaScreen catalog={catalog} profile={profile} />}
             {screen === 'progression' && (
               <ProgressionScreen
