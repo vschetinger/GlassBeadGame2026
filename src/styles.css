@@ -226,7 +226,7 @@ input, select {
   border-radius: 999px;
   padding: 0.12rem 0.5rem;
   font-weight: 800;
-  animation: chip-float 0.38s ease;
+  animation: chip-float 0.7s ease forwards;
 }
 
 .ceremony {
@@ -261,6 +261,18 @@ input, select {
 }
 
 .ceremony-beat { margin: 0.7rem 0 0; min-height: 1.3em; font-size: 1.2rem; }
+
+.ceremony-next { margin-top: 1rem; }
+
+.reward-confirm {
+  position: sticky;
+  bottom: 0.6rem;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.8rem;
+  padding: 0.7rem 0;
+  background: linear-gradient(transparent, var(--bg) 30%);
+}
 
 .ceremony-hand-row { justify-content: center; }
 
@@ -298,7 +310,7 @@ input, select {
 
 .product strong { color: var(--brass); font-size: 4rem; }
 
-.chip-box.live strong, .product strong { animation: tally-pop 0.32s ease; }
+.chip-box.live strong, .product strong { animation: tally-pop 0.55s ease; }
 
 .chip-box span, .mult-box span {
   color: var(--muted);
@@ -315,13 +327,13 @@ input, select {
 }
 
 @keyframes tally-pop {
-  from { transform: scale(1.18); }
+  from { transform: scale(1.22); }
   to { transform: none; }
 }
 
 @keyframes chip-float {
-  from { opacity: 0; transform: translate(-50%, 10px); }
-  to { opacity: 1; transform: translateX(-50%); }
+  from { opacity: 0; transform: translate(-50%, 18px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .hand .card { width: 124px; flex: 0 0 auto; }

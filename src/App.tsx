@@ -43,7 +43,6 @@ export function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [run, setRun] = useState<RunState | null>(null);
   const [view, setView] = useState<View>('home');
-  const [seed, setSeed] = useState('castalia');
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [ceremony, setCeremony] = useState<LastPlay | null>(null);
@@ -103,6 +102,7 @@ export function App() {
     setError(null);
     setStatus('Casting the world…');
     window.setTimeout(() => {
+      const seed = crypto.randomUUID();
       act(() => createRun(seed, config, profile, catalog, tables));
       setStatus(null);
       setView('auto');
@@ -162,9 +162,7 @@ export function App() {
           <>
             {screen === 'home' && (
               <HomeScreen
-                seed={seed}
                 canContinue={Boolean(run)}
-                onSeed={setSeed}
                 onContinue={() => setView('auto')}
                 onNew={(preset) => start(preset === 'short' ? SHORT_RUN_CONFIG : DEFAULT_CONFIG)}
               />
@@ -254,7 +252,13 @@ export function App() {
         )}
       </main>
       {ceremony && catalog && profile && (
-        <ScoreCeremony play={ceremony} catalog={catalog} profile={profile} onDone={() => setCeremony(null)} />
+        <ScoreCeremony
+          play={ceremony}
+          catalog={catalog}
+          profile={profile}
+          continueLabel={run?.pendingRewardRegionId ? 'Choose a reward' : run?.battle?.status === 'active' ? 'Play next hand' : 'Continue'}
+          onDone={() => setCeremony(null)}
+        />
       )}
     </div>
   );

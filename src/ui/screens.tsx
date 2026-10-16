@@ -56,7 +56,7 @@ export function MotifCard(props: {
         <img src={imageUrl(props.catalog.imageBase, motif.image)} alt="" loading="lazy" />
         {showFace && <FaceIndex motif={motif} />}
         {!showFace && <span className="seal" aria-hidden="true">?</span>}
-        {props.hot && props.pop != null && <span className="chip-pop">+{props.pop}</span>}
+        {props.pop != null && <span className="chip-pop">+{props.pop}</span>}
       </span>
       <span className="card-copy">
         <strong>{motif.name}</strong>
@@ -67,23 +67,17 @@ export function MotifCard(props: {
 }
 
 export function HomeScreen(props: {
-  seed: string;
   canContinue: boolean;
-  onSeed: (seed: string) => void;
   onContinue: () => void;
   onNew: (preset: 'full' | 'short') => void;
 }) {
   return (
     <section className="home">
       <p className="lede">
-        A seed draws two hundred folklore motifs and twenty deities. You conquer the neighboring gods with poker hands. Playing a card reveals its Tarot face forever. The deck itself does not survive the run.
+        Each run draws two hundred folklore motifs and twenty deities. You conquer the neighboring gods with poker hands. Playing a card reveals its Tarot face forever. The deck itself does not survive the run.
       </p>
       <div className="home-actions">
         {props.canContinue && <button className="primary" onClick={props.onContinue}>Continue</button>}
-        <label>
-          Seed
-          <input value={props.seed} onChange={(event) => props.onSeed(event.target.value)} />
-        </label>
         <button className="primary" onClick={() => props.onNew('full')}>New run</button>
         <button onClick={() => props.onNew('short')}>Short run</button>
       </div>
@@ -306,11 +300,20 @@ function scoreFrames(play: LastPlay, catalog: Catalog): ScoreFrame[] {
     score += hit.bonus;
     frames.push({ phase: 'product', chips, score, pop: hit.bonus, caption: `+${hit.bonus} ${hit.name}` });
   });
-  frames.push({ phase: 'done', chips, score: play.total ?? score, caption: play.categoryLabel ?? '' });
+  const settledCaption = play.folkloreBonus
+    ? `${play.pokerSubtotal ?? score} + ${play.folkloreBonus}`
+    : `${chips} × ${play.multiplier ?? 1}`;
+  frames.push({ phase: 'done', chips, score: play.total ?? score, caption: settledCaption });
   return frames;
 }
 
-export function ScoreCeremony(props: { play: LastPlay; catalog: Catalog; profile: Profile; onDone: () => void }) {
+export function ScoreCeremony(props: {
+  play: LastPlay;
+  catalog: Catalog;
+  profile: Profile;
+  continueLabel: string;
+  onDone: () => void;
+}) {
   const frames = useMemo(() => scoreFrames(props.play, props.catalog), [props.play, props.catalog]);
   const [index, setIndex] = useState(0);
   const done = useRef(props.onDone);
@@ -319,34 +322,34 @@ export function ScoreCeremony(props: { play: LastPlay; catalog: Catalog; profile
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) {
       setIndex(frames.length - 1);
-      const timer = window.setTimeout(() => done.current(), 700);
-      return () => window.clearTimeout(timer);
+      return;
     }
     const wait = frames.map((frame) => {
-      if (frame.phase === 'reveal') return 560;
-      if (frame.phase === 'product' && frame.caption.includes('×')) return 680;
-      if (frame.phase === 'done') return 820;
-      return 380;
+      if (frame.phase === 'reveal') return 900;
+      if (frame.phase === 'product' && frame.caption.includes('×')) return 1200;
+      return 850;
     });
     let step = 0;
     let timer = 0;
     const advance = () => {
       step += 1;
-      if (step >= frames.length) {
-        timer = window.setTimeout(() => done.current(), 280);
-        return;
-      }
       setIndex(step);
+      if (step >= frames.length - 1) return;
       timer = window.setTimeout(advance, wait[step]);
     };
     timer = window.setTimeout(advance, wait[0]);
     return () => window.clearTimeout(timer);
   }, [frames]);
   const frame = frames[Math.min(index, frames.length - 1)];
+  const pops = new Map<string, number>();
+  frames.slice(0, index + 1).forEach((item) => {
+    if (item.hotId != null && item.pop != null) pops.set(item.hotId, item.pop);
+  });
   const fresh = new Set(props.play.discoveredMotifIds ?? []);
   const scoring = new Set(props.play.scoringCardIds ?? []);
   const revealed = frame.phase !== 'reveal';
   const showProduct = frame.phase === 'product' || frame.phase === 'done';
+  const settled = index >= frames.length - 1;
   return (
     <div className="ceremony" role="dialog" aria-label="Score">
       <div className="ceremony-stage">
@@ -361,7 +364,7 @@ export function ScoreCeremony(props: { play: LastPlay; catalog: Catalog; profile
               conceal={fresh.has(id) && !revealed}
               hot={frame.hotId === id}
               dim={revealed && !scoring.has(id)}
-              pop={frame.hotId === id ? frame.pop : undefined}
+              pop={pops.get(id)}
             />
           ))}
         </div>
@@ -383,6 +386,11 @@ export function ScoreCeremony(props: { play: LastPlay; catalog: Catalog; profile
           </div>
         )}
         <p className="ceremony-beat">{frame.caption !== props.play.categoryLabel ? frame.caption : ''}</p>
+        {settled && (
+          <button className="primary ceremony-next" autoFocus onClick={() => done.current()}>
+            {props.continueLabel}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -396,20 +404,32 @@ export function RewardScreen(props: {
   onRemove: (motifId: string) => void;
   onContinue: () => void;
 }) {
+  const [choice, setChoice] = useState<{ type: 'add' | 'remove'; motifId: string } | null>(null);
   const options = rewardOptions(props.run);
   const region = props.run.regions.find((item) => item.id === props.run.pendingRewardRegionId);
   const deity = region ? props.catalog.deities[props.catalog.deityIndex.get(region.deityId)!] : undefined;
+  function pick(type: 'add' | 'remove', motifId: string) {
+    setChoice((current) => (current?.type === type && current.motifId === motifId ? null : { type, motifId }));
+  }
+  const confirmLabel = choice?.type === 'remove' ? 'Remove this card' : 'Add this card';
   return (
     <section>
       <h2>{deity?.name} is conquered</h2>
-      <p className="lede">Add one motif from this domain, or remove one card from your deck.</p>
+      <p className="lede">Choose one motif to add from this domain, or one card to remove from your deck. Nothing changes until you confirm.</p>
       {props.run.lastPlay && <PlayBreakdown play={props.run.lastPlay} catalog={props.catalog} />}
       <div className="split">
         <div>
           <h3>Add</h3>
           <div className="choice-grid">
             {options.addableIds.map((id) => (
-              <MotifCard key={id} catalog={props.catalog} profile={props.profile} motifId={id} onClick={() => props.onAdd(id)} />
+              <MotifCard
+                key={id}
+                catalog={props.catalog}
+                profile={props.profile}
+                motifId={id}
+                selected={choice?.type === 'add' && choice.motifId === id}
+                onClick={() => pick('add', id)}
+              />
             ))}
           </div>
           {!options.canAdd && <p className="meta">Every motif from this domain is already in the deck.</p>}
@@ -418,12 +438,34 @@ export function RewardScreen(props: {
           <h3>Remove</h3>
           <div className="choice-grid">
             {options.removableIds.map((id) => (
-              <MotifCard key={id} catalog={props.catalog} profile={props.profile} motifId={id} onClick={() => props.onRemove(id)} />
+              <MotifCard
+                key={id}
+                catalog={props.catalog}
+                profile={props.profile}
+                motifId={id}
+                selected={choice?.type === 'remove' && choice.motifId === id}
+                onClick={() => pick('remove', id)}
+              />
             ))}
           </div>
           {!options.canRemove && <p className="meta">The deck is at its minimum size.</p>}
         </div>
       </div>
+      {(options.canAdd || options.canRemove) && (
+        <div className="reward-confirm">
+          <button
+            className="primary"
+            disabled={!choice}
+            onClick={() => {
+              if (!choice) return;
+              if (choice.type === 'add') props.onAdd(choice.motifId);
+              else props.onRemove(choice.motifId);
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      )}
       {!options.canAdd && !options.canRemove && (
         <button className="primary" onClick={props.onContinue}>Continue without a change</button>
       )}
