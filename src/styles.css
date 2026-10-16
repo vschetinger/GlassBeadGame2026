@@ -1,0 +1,355 @@
+:root {
+  color-scheme: dark;
+  --bg: #12100e;
+  --bg-raise: #1c1814;
+  --ink: #f3ead7;
+  --muted: #b3a89a;
+  --brass: #d7b56a;
+  --brass-deep: #8c6a32;
+  --moss: #8eae8a;
+  --blood: #c45b4a;
+  --paper: #f4ecdc;
+  --paper-ink: #241910;
+  --line: rgba(215, 181, 106, 0.35);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  font-family: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(215, 181, 106, 0.08), transparent 50%),
+    var(--bg);
+  color: var(--ink);
+}
+
+button, input, select { font: inherit; color: inherit; }
+
+button {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { border-color: var(--brass); }
+
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+button.primary {
+  background: var(--brass);
+  color: #24180b;
+  border-color: transparent;
+  font-weight: 700;
+}
+
+button:focus-visible, .card:focus-visible, .region:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+}
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand { font-size: 1.25rem; letter-spacing: 0.04em; }
+
+.brand span { color: var(--brass); }
+
+.nav, .stats { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+
+.stats { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+main { padding: 1.2rem; flex: 1; }
+
+.home, .narrow { max-width: 760px; }
+
+.lede { font-size: 1.25rem; line-height: 1.45; max-width: 38rem; }
+
+.home-actions, .row { display: flex; gap: 0.7rem; flex-wrap: wrap; align-items: end; }
+
+label { display: grid; gap: 0.3rem; color: var(--muted); font-size: 0.85rem; }
+
+input, select {
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  min-width: 12rem;
+}
+
+.definitions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; padding: 0; margin: 1.5rem 0 0; list-style: none; }
+
+.definitions li, .panel, .breakdown, .card-copy {
+  background: var(--bg-raise);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+}
+
+.definitions strong { display: block; color: var(--brass); margin-bottom: 0.3rem; }
+
+.map-layout, .battle-layout, .split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1rem; align-items: start; }
+
+.map {
+  width: 100%;
+  height: min(74vh, 760px);
+  background: #0d0c0b;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+}
+
+.region { cursor: pointer; stroke-width: 2; }
+.region.conquered { fill: #24362c; stroke: var(--moss); }
+.region.home { fill: #3a3424; stroke: var(--brass); }
+.region.attackable { fill: #3a2b22; stroke: var(--brass); }
+.region.locked { fill: #1a1816; stroke: #3a342c; }
+.region.selected { stroke: var(--ink); stroke-width: 3; }
+
+.map text { fill: var(--ink); font-size: 13px; pointer-events: none; }
+
+.panel h2, .breakdown h2 { margin: 0 0 0.4rem; font-size: 1.35rem; }
+
+.meta { color: var(--muted); margin: 0 0 0.8rem; }
+
+.gallery, .hand, .choice-grid, .catalog-grid { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+
+.hand { flex-wrap: nowrap; overflow-x: auto; padding-top: 0.7rem; }
+
+.card {
+  width: 138px;
+  padding: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  text-align: left;
+  background: var(--paper);
+  color: var(--paper-ink);
+  border: 2px solid transparent;
+  position: relative;
+}
+
+.card.selected { transform: translateY(-8px); border-color: var(--brass-deep); }
+
+.art { position: relative; display: block; }
+
+.card img { width: 100%; height: 150px; object-fit: cover; display: block; background: #d9cbb6; }
+
+.face-index {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.18rem;
+  padding: 0.08rem 0.42rem 0.12rem;
+  border-radius: 999px;
+  background: rgba(247, 241, 228, 0.94);
+  box-shadow: 0 2px 10px rgba(20, 12, 6, 0.35);
+  line-height: 1;
+  transform: translateX(-50%);
+  animation: face-in 0.32s ease;
+}
+
+.face-rank {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #241910;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.face-index:has(.wild-suits) .face-rank { color: #8a5a12; }
+
+.face-suit { font-size: 1.1rem; }
+
+.face-suit.cups, .face-suit.pentacles, .wild-suits .cups, .wild-suits .pentacles { color: #b4232c; }
+
+.face-suit.swords, .face-suit.wands, .wild-suits .swords, .wild-suits .wands { color: #1a120e; }
+
+.wild-suits {
+  display: flex;
+  gap: 0.02rem;
+  font-size: 0.72rem;
+  letter-spacing: -0.08em;
+}
+
+.card-copy { border: 0; border-radius: 0; background: transparent; padding: 0.45rem 0.55rem 0.6rem; }
+
+.card-copy strong, .card-copy small { display: block; }
+
+.card-copy small { color: #6d5c49; min-height: 1.1em; }
+
+.seal {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--blood);
+  color: white;
+  font-weight: 700;
+}
+
+.card.hot {
+  transform: translateY(-16px);
+  border-color: var(--brass);
+  box-shadow: 0 16px 36px rgba(215, 181, 106, 0.38);
+}
+
+.card.dim { filter: saturate(0.15) brightness(0.7); }
+
+.chip-pop {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  background: #16324a;
+  color: #d7ecff;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-weight: 800;
+  animation: chip-float 0.38s ease;
+}
+
+.ceremony {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background: rgba(8, 6, 5, 0.9);
+}
+
+.ceremony-stage {
+  width: min(980px, 100%);
+  text-align: center;
+  background:
+    radial-gradient(520px 180px at 50% 0%, rgba(215, 181, 106, 0.16), transparent 70%),
+    #16130f;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 1.3rem 1.1rem 1rem;
+  box-shadow: var(--shadow);
+}
+
+.ceremony-hand {
+  margin: 0 0 0.85rem;
+  min-height: 1.2em;
+  font-size: 2rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.ceremony-beat { margin: 0.7rem 0 0; min-height: 1.3em; font-size: 1.2rem; }
+
+.ceremony-hand-row { justify-content: center; }
+
+.ceremony .card { pointer-events: none; }
+
+.tally-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.chip-box, .mult-box, .product {
+  min-width: 7.5rem;
+  background: #1a120c;
+  border: 2px solid #6aa7d8;
+  border-radius: 16px;
+  padding: 0.45rem 0.9rem 0.6rem;
+}
+
+.mult-box { border-color: #c45b4a; }
+
+.product { border-color: var(--brass); display: inline-block; margin-top: 1rem; }
+
+.chip-box strong, .mult-box strong, .product strong {
+  display: block;
+  font-size: 3.1rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #8ec8ff;
+}
+
+.mult-box strong { color: #e7c07a; }
+
+.product strong { color: var(--brass); font-size: 4rem; }
+
+.chip-box.live strong, .product strong { animation: tally-pop 0.32s ease; }
+
+.chip-box span, .mult-box span {
+  color: var(--muted);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.times { font-size: 2.2rem; color: var(--brass); }
+
+@keyframes face-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+@keyframes tally-pop {
+  from { transform: scale(1.18); }
+  to { transform: none; }
+}
+
+@keyframes chip-float {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+.hand .card { width: 124px; flex: 0 0 auto; }
+
+.hand .card img { height: 136px; }
+
+.battle-head, .score-readout { display: flex; justify-content: space-between; gap: 1rem; align-items: end; }
+
+.score-readout strong { font-size: 1.8rem; font-variant-numeric: tabular-nums; }
+
+.actions { display: flex; gap: 0.6rem; margin: 0.8rem 0; }
+
+.breakdown ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+
+.choice-grid { max-height: 52vh; overflow: auto; }
+
+.catalog-grid { max-height: 68vh; overflow: auto; }
+
+.tabs { display: flex; gap: 0.4rem; margin-bottom: 0.8rem; }
+
+.warning { color: #e7c07a; }
+
+@media (max-width: 900px) {
+  .map-layout, .battle-layout, .split, .definitions { grid-template-columns: 1fr; }
+  .topbar { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.selected, .card.hot { transform: none; }
+  .face-index, .chip-box.live strong, .product strong, .chip-pop { animation: none; }
+}
