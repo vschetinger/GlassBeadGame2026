@@ -27,16 +27,19 @@ describe('authored balance', () => {
     const full = applyBalance(DEFAULT_CONFIG, file(balanceFiles, '/default.md'), 'default');
     expect(full.warnings).toEqual([]);
     expect(validateConfig(full.config)).toEqual([]);
-    expect(full.config.deck.startingSize).toBe(15);
-    expect(full.config.combat.visibleHandSize).toBe(8);
+    expect(full.config.deck.startingSize).toBe(2);
+    expect(full.config.deck.reward).toBe('add');
+    expect(full.config.combat.visibleHandSize).toBe(5);
+    expect(full.config.difficulty.targetModel).toBe('potential');
+    expect(full.config.difficulty.waveLow).toBe(0.45);
     expect(full.config.difficulty.hopMultiplier).toBe(1.5);
     expect(full.config.texts.similarityThreshold).toBeNull();
     expect(full.config.progression.pointThresholds).toEqual([10, 25, 50, 75, 100, 150, 200]);
     const short = applyBalance(full.config, file(balanceFiles, '/short.md'), 'short');
     expect(short.warnings).toEqual([]);
-    expect(short.config.world.motifsPerRun).toBe(60);
-    expect(short.config.world.regionsPerRun).toBe(6);
-    expect(short.config.difficulty.baseTarget).toBe(70);
+    expect(short.config.world.motifsPerRun).toBe(18);
+    expect(short.config.world.regionsPerRun).toBe(5);
+    expect(short.config.difficulty.targetModel).toBe('potential');
     expect(short.config.deck.startingSize).toBe(full.config.deck.startingSize);
   });
 

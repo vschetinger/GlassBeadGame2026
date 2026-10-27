@@ -3,18 +3,19 @@ id: default
 title: Full run
 ---
 
-world.motifsPerRun: 200
-world.regionsPerRun: 20
+world.motifsPerRun: 32
+world.regionsPerRun: 8
 world.optimizationSwaps: 3
 world.optimizationNoise: 0
-world.minMotifsPerRegion: 1
+world.minMotifsPerRegion: 3
 world.startRegionInitiallyConquered: true
 
-deck.startingSize: 15
-deck.minimumSize: 8
+deck.startingSize: 2
+deck.minimumSize: 2
 deck.allowDuplicates: false
+deck.reward: add
 
-combat.visibleHandSize: 8
+combat.visibleHandSize: 5
 combat.maxCardsPerPlay: 5
 combat.baseHands: 4
 combat.baseDiscards: 3
@@ -23,11 +24,14 @@ combat.reshuffleOnEmpty: true
 
 difficulty.baseTarget: 100
 difficulty.hopMultiplier: 1.5
-difficulty.expectedRegionSize: 10
+difficulty.expectedRegionSize: 4
 difficulty.sizeSlope: 0.015
 difficulty.sizeMin: 0.9
 difficulty.sizeMax: 1.15
 difficulty.scoreStep: 10
+difficulty.targetModel: potential
+difficulty.waveLow: 0.45
+difficulty.waveHigh: 1.15
 
 texts.minResonantCards: 2
 texts.similarityThreshold: catalog

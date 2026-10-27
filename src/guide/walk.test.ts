@@ -134,6 +134,10 @@ show: coach
 
     const dismissed = present(notes, 'playing', { ...zeros, seen_total: 60, discovered_total: 1, seen_run: 12, conquered: 2 }, ['lesson.question-mark']);
     expect(dismissed.banners.map((banner) => banner.id)).toEqual(['lesson.this-run', 'lesson.frontier']);
+
+    const closed = present(notes, 'empty', zeros, ['empty']);
+    expect(closed.beat).toBe('empty');
+    expect(closed.stage).toBeNull();
   });
 
   it('follows the first true gate and ignores a side offer', () => {

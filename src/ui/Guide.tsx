@@ -11,6 +11,7 @@ export function GuideOverlay(props: {
   onChoose: (to: string) => void;
   onOpen: (id: string) => void;
   onDismiss: (id: string) => void;
+  onClose: () => void;
 }) {
   const stage = props.view.stage;
   const coaching = stage?.show === 'coach';
@@ -37,6 +38,7 @@ export function GuideOverlay(props: {
           aria-modal={stage.show !== 'coach'}
           aria-label={stage.title}
         >
+          <button type="button" className="guide-close" aria-label="Close" onClick={props.onClose}>×</button>
           <p className="guide-kicker">{kicker(stage)}</p>
           <h2>{stage.title}</h2>
           {paragraphs(stage.body).map((paragraph) => (

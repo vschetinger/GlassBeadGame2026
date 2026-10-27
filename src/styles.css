@@ -63,9 +63,24 @@ button:focus-visible, .card:focus-visible, .region:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
-.brand { font-size: 1.25rem; letter-spacing: 0.04em; }
+.brand { display: flex; align-items: center; gap: 0.45rem; font-size: 1.25rem; letter-spacing: 0.04em; }
 
 .brand span { color: var(--brass); }
+
+.trash {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.trash svg { width: 1rem; height: 1rem; }
+
+.trash:hover:not(:disabled) { color: var(--blood); border-color: var(--blood); }
+
+.wipe-layer { position: fixed; inset: 0; z-index: 70; }
 
 .nav, .stats { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 
@@ -426,7 +441,21 @@ input, select {
 
 .guide-card.anchored { transform: none; }
 
-.guide-card h2 { margin: 0 0 0.45rem; font-size: 1.35rem; }
+.guide-close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.guide-card h2 { margin: 0 2rem 0.45rem 0; font-size: 1.35rem; }
 
 .guide-card p { margin: 0 0 0.7rem; }
 

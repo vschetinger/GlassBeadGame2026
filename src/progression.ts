@@ -9,7 +9,7 @@ export function emptyProfile(catalogVersion: string): Profile {
     discoveredTextIds: [],
     upgradeAllocation: { hands: 0, discards: 0, lives: 0 },
     statistics: { runs: 0, wins: 0, losses: 0 },
-    guide: { beat: 'start', dismissed: [] },
+    guide: { beat: 'start', dismissed: [], known: [], off: [] },
   };
 }
 

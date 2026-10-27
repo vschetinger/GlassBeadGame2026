@@ -62,7 +62,7 @@ export function present(
     id = next.to;
   }
   const node = byId.get(id) ?? null;
-  const stage = node && (node.show === 'dialog' || node.show === 'coach' || node.show === 'page') ? node : null;
+  const stage = node && (node.show === 'dialog' || node.show === 'coach' || node.show === 'page') && !dismissed.includes(node.id) ? node : null;
   const choices = (stage?.edges ?? [])
     .filter((edge) => edge.glyph === '?')
     .map((edge) => ({ to: edge.to, label: edge.label || edge.to }));

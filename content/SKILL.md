@@ -16,7 +16,7 @@ show: coach
 at: play
 ---
 
-These eight motifs are now seen. A ? means the rank is still hidden. Select up to five cards, then play.
+These cards are now seen. A ? means the rank is still hidden. Select up to five, then play.
 
 > [[revealed|hands_run >= 1]]
 ```
@@ -161,9 +161,10 @@ A line is `group.name: value`. Numbers are whole or decimal. `true` and `false` 
 | `world.optimizationNoise` | How much that grouping is allowed to wobble. `0` is exact. |
 | `world.minMotifsPerRegion` | Smallest land. |
 | `world.startRegionInitiallyConquered` | Home starts held. |
-| `deck.startingSize` | Cards in a new deck. |
-| `deck.minimumSize` | The deck cannot be rewarded below this. |
-| `combat.visibleHandSize` | Cards dealt into the hand. |
+| `deck.startingSize` | Cards in a new deck. They are taken from the home land, then from the rest of the map if home is smaller. |
+| `deck.minimumSize` | With `deck.reward: either`, the deck cannot be trimmed below this. |
+| `deck.reward` | `add` offers one new card from the conquered land. `either` also offers a removal. A land with nothing new can be left with Continue, and it still counts as conquered. |
+| `combat.visibleHandSize` | The most cards dealt. A smaller deck deals every card it has. |
 | `combat.maxCardsPerPlay` | Cards that can be played at once. The cap is 5. |
 | `combat.baseHands` | Hands in a fight, before upgrades. |
 | `combat.baseDiscards` | Discards in a fight, before upgrades. |
@@ -175,7 +176,10 @@ A line is `group.name: value`. Numbers are whole or decimal. `true` and `false` 
 | `difficulty.sizeSlope` | How much a bigger or smaller land moves the target. |
 | `difficulty.sizeMin` | Floor of that size adjustment. |
 | `difficulty.sizeMax` | Ceiling of that size adjustment. |
-| `difficulty.scoreStep` | Targets are rounded to this step. |
+| `difficulty.scoreStep` | Targets are rounded to this step. The easiest land in a wave may sit below the step when that is the only way to stay winnable. |
+| `difficulty.targetModel` | `potential` or `hop`. |
+| `difficulty.waveLow` | In `potential`, the easiest newly opened land asks for this fraction of a perfect fight. Above 0 and at most 1. |
+| `difficulty.waveHigh` | In `potential`, the hardest land opened in the same wave. At least `waveLow`. |
 | `texts.minResonantCards` | Motifs that must resemble a text before it notices the hand. |
 | `texts.similarityThreshold` | How close a motif must be. `catalog`, or a decimal such as `0.7`. |
 | `texts.baseBonus` | Flat points from a text you have already unlocked. |
@@ -189,7 +193,11 @@ A line is `group.name: value`. Numbers are whole or decimal. `true` and `false` 
 | `progression.upgrades.lives.cost` | Points for one extra life. |
 | `progression.upgrades.lives.max` | Cap on that upgrade. |
 
-The target for a land is `baseTarget × hopMultiplier ^ hop`, nudged by how many motifs that land holds, then rounded to `scoreStep`. A full run's first neighbor is about `100 × 1.5 = 150`.
+`hop` sets every land when the map is created: `baseTarget × hopMultiplier ^ hop`, nudged by how many motifs that land holds, then rounded to `scoreStep`.
+
+`potential` waits until a land becomes attackable, then freezes its target. The estimate is the deck's best legal poker hand, including skill chips that are currently on, multiplied by the hands in a fresh fight. Lands that open together are spread from `waveLow` to `waveHigh` of that total, nearer hops first, then by id. The easiest is never above a perfect run of that best hand. A later improvement to the deck does not change a land that already has a target. The next wave is priced when it opens. The current files use `potential`, a starting deck of 2, a hand of at most 5, 32 motifs across 8 lands on a full run, and 18 motifs across 5 lands on a short run.
+
+A run stores the balance file it started from, its deck, and each land's target. An unfinished run keeps those numbers, including an older hand size or hop targets. Lands without `targetLocked` are left alone unless that snapshot's `targetModel` is `potential`. A missing `deck.reward` means the older add-or-remove reward. Start a new run to pick up edits in these files.
 
 Four keys are stored and reserved. Changing them does not change play yet: `deck.allowDuplicates`, `texts.newDiscoveryScoresImmediately`, `texts.bonusAppliedAfterPokerMultiplier`, `progression.respecBetweenRuns`.
 
@@ -208,7 +216,9 @@ These are the only names that fire. Anything else warns and never matches.
 | `in_battle` | `1` while a fight is active. `0` on the map, on a reward, and after the fight. |
 | `conquered` | Regions held, including home. Home starts at 1. The next win makes it 2. |
 
-`seen_run >= 8` is true as soon as the opening hand is dealt, because that hand has eight cards. Do not use it to leave a note that is supposed to be read on the home screen. Leave home with `runs >= 1`, leave the map with `in_battle == 1`, and leave the hand coach with `hands_run >= 1`.
+The opening hand is `min(combat.visibleHandSize, cards in the deck)`. With the current files that is two cards, so `seen_run >= 8` is not true on the first deal. Leave home with `runs >= 1`, leave the map with `in_battle == 1`, and leave the hand coach with `hands_run >= 1`.
+
+The player can close any dialog, coach, or page with ×. Closing hides that note and does not teach its mentions. A note that has a `?` back to `playing` returns there. A `>` edge still fires later, when its counter becomes true. You do not author the ×.
 
 ## Hooks a coach may point at
 

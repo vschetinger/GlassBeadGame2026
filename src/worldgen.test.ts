@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SHORT_RUN_CONFIG } from './config';
-import { createRun } from './game';
+import { attackableRegionIds, createRun } from './game';
 import { emptyProfile } from './progression';
 import { rngFromSeed } from './rng';
 import type { BalanceConfig, Catalog, SimilarityTables } from './types';
@@ -37,8 +37,8 @@ function clusteredTables(): { motifIds: string[]; deityIds: string[]; tables: Si
 
 const config: BalanceConfig = {
   ...SHORT_RUN_CONFIG,
-  world: { ...SHORT_RUN_CONFIG.world, motifsPerRun: 8, regionsPerRun: 4, optimizationSwaps: 1 },
-  deck: { startingSize: 4, minimumSize: 2, allowDuplicates: false },
+  world: { ...SHORT_RUN_CONFIG.world, motifsPerRun: 8, regionsPerRun: 4, optimizationSwaps: 1, minMotifsPerRegion: 1 },
+  deck: { ...SHORT_RUN_CONFIG.deck, startingSize: 4, minimumSize: 2 },
 };
 
 describe('world generation', () => {
@@ -64,7 +64,10 @@ describe('world generation', () => {
     }
     expect(seen.size).toBe(4);
     for (const region of first.regions) {
-      if (region.hopDistance > 0) {
+      if (config.difficulty.targetModel === 'potential') {
+        expect(region.targetScore).toBe(0);
+        expect(region.targetLocked).toBe(false);
+      } else if (region.hopDistance > 0) {
         expect(region.targetScore).toBeGreaterThanOrEqual(targetScore(region.hopDistance, region.motifIds.length, config));
       }
     }
@@ -118,5 +121,59 @@ describe('run creation', () => {
     const again = createRun('castalia', config, emptyProfile('test'), catalog, data.tables);
     expect(again.run.regions.map((region) => region.deityId)).toEqual(run.regions.map((region) => region.deityId));
     expect(again.run.deckMotifIds).toEqual(run.deckMotifIds);
+  });
+
+  it('draws a two-card deck from home and freezes an attainable first wave', () => {
+    const data = clusteredTables();
+    const catalog = {
+      catalogVersion: 'test',
+      embeddingModel: 'test',
+      embeddingDim: 2,
+      similarityScale: 10000,
+      textThreshold: 0.8,
+      imageBase: '',
+      counts: { motifs: 8, majors: 0, minors: 8, deities: 4, texts: 0, missingImages: 0 },
+      motifs: data.motifIds.map((id, index) => ({
+        id,
+        name: id,
+        description: '',
+        chapter: '',
+        image: '',
+        tarotIndex: index,
+        tarotName: 'Two of Cups',
+        arcana: 'minor' as const,
+        rank: '2' as const,
+        suit: 'Cups' as const,
+        wild: false,
+      })),
+      deities: data.deityIds.map((id) => ({ id, name: id, pantheon: 'roman', description: '' })),
+      texts: [],
+      motifIndex: new Map(data.motifIds.map((id, index) => [id, index])),
+      deityIndex: new Map(data.deityIds.map((id, index) => [id, index])),
+      textIndex: new Map(),
+    } satisfies Catalog;
+    const small = { ...config, deck: { ...config.deck, startingSize: 2, minimumSize: 2 } };
+    const { run } = createRun('castalia', small, emptyProfile('test'), catalog, data.tables);
+    const home = run.regions.find((region) => region.id === run.startRegionId)!;
+    expect(run.deckMotifIds).toHaveLength(2);
+    expect(run.deckMotifIds.every((id) => home.motifIds.includes(id))).toBe(true);
+    const open = attackableRegionIds(run);
+    expect(open.length).toBeGreaterThan(0);
+    const perfect = (10 + 2 + 2) * 2 * small.combat.baseHands;
+    for (const id of open) {
+      const region = run.regions.find((item) => item.id === id)!;
+      expect(region.targetLocked).toBe(true);
+      expect(region.targetScore).toBeGreaterThan(0);
+    }
+    const easiest = Math.min(...open.map((id) => run.regions.find((item) => item.id === id)!.targetScore));
+    expect(easiest).toBeLessThanOrEqual(perfect);
+    if (open.length > 1) {
+      const hardest = Math.max(...open.map((id) => run.regions.find((item) => item.id === id)!.targetScore));
+      expect(hardest).toBeGreaterThan(easiest);
+    }
+    for (const region of run.regions) {
+      if (region.id === run.startRegionId || open.includes(region.id)) continue;
+      expect(region.targetLocked).toBe(false);
+    }
   });
 });

@@ -84,6 +84,7 @@ export interface BalanceConfig {
     startingSize: number;
     minimumSize: number;
     allowDuplicates: boolean;
+    reward: 'add' | 'either';
   };
   combat: {
     visibleHandSize: number;
@@ -101,6 +102,9 @@ export interface BalanceConfig {
     sizeMin: number;
     sizeMax: number;
     scoreStep: number;
+    targetModel: 'potential' | 'hop';
+    waveLow: number;
+    waveHigh: number;
   };
   texts: {
     minResonantCards: number;
@@ -159,6 +163,7 @@ export interface RegionState {
   neighborRegionIds: string[];
   hopDistance: number;
   targetScore: number;
+  targetLocked?: boolean;
 }
 
 export interface BattleState {

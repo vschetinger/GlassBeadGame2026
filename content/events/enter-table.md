@@ -5,6 +5,6 @@ show: coach
 at: start-run
 ---
 
-Start a run from here. New run is the full table. Short run is a smaller world. Either way, the first battle deals eight cards, and those eight become seen.
+Start a run from here. New run is the full table. Short run is a smaller map. The deck starts small, and a rank stays hidden until you play that card.
 
 > [[on-map|runs >= 1]]

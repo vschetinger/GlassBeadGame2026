@@ -62,6 +62,11 @@ function parseValue(current: unknown, raw: string): { ok: true; value: unknown }
     if (raw !== 'true' && raw !== 'false') return { ok: false };
     return { ok: true, value: raw === 'true' };
   }
+  if (typeof current === 'string') {
+    const value = raw.trim();
+    if (!/^[a-z][a-z-]*$/.test(value)) return { ok: false };
+    return { ok: true, value };
+  }
   if (typeof current === 'number' || current === null) {
     if (raw === 'catalog') return { ok: true, value: null };
     if (!/^\d+(\.\d+)?$/.test(raw)) return { ok: false };

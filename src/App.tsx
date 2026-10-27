@@ -53,6 +53,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [ceremony, setCeremony] = useState<LastPlay | null>(null);
+  const [confirmWipe, setConfirmWipe] = useState(false);
   const lock = useRef(false);
   const seenPlay = useRef<number | null>(null);
   const hydrated = useRef(false);
@@ -104,6 +105,14 @@ export function App() {
     }
   }
 
+  function wipeLibrary() {
+    if (!catalog) return;
+    setCeremony(null);
+    setConfirmWipe(false);
+    commit({ run: null, profile: emptyProfile(catalog.catalogVersion) });
+    setView('home');
+  }
+
   function start(config: BalanceConfig) {
     if (!catalog || !tables || !profile || lock.current) return;
     setError(null);
@@ -147,6 +156,20 @@ export function App() {
     const current = guideContent.notes.find((note) => note.id === guideView.beat);
     const known = leaveCurrent ? learnedIds(current, profile.guide?.known ?? []) : (profile.guide?.known ?? []);
     writeGuide({ beat: to, dismissed: nextDismissed, known, off: profile.guide?.off ?? [] });
+  }
+
+  function closeGuide() {
+    if (!profile || !guideView?.stage) return;
+    const dismissed = profile.guide?.dismissed ?? [];
+    const beat = guideView.beat;
+    const nextDismissed = dismissed.includes(beat) ? dismissed : [...dismissed, beat];
+    const retreat = guideView.choices.some((choice) => choice.to === 'playing');
+    writeGuide({
+      beat: retreat ? 'playing' : beat,
+      dismissed: nextDismissed,
+      known: profile.guide?.known ?? [],
+      off: profile.guide?.off ?? [],
+    });
   }
 
   function toggleSkill(id: string) {
@@ -206,7 +229,16 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">Glass <span>Bead</span> Roguelite</div>
+        <div className="brand">
+          Glass <span>Bead</span> Roguelite
+          <button type="button" className="trash" aria-label="Erase the library" onClick={() => setConfirmWipe(true)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 7h16" />
+              <path d="M9 7V5h6v2" />
+              <path d="M7 7l1 13h8l1-13" />
+            </svg>
+          </button>
+        </div>
         <nav className="nav">
           <button onClick={() => setView('home')}>Home</button>
           {run?.status === 'active' && !run.pendingRewardRegionId && !run.battle && (
@@ -262,7 +294,7 @@ export function App() {
                   void saveProfile(next.profile);
                   void saveRun(next.run);
                 }}
-                onAttack={(regionId) => act(() => beginBattle(run, profile, regionId, run.configSnapshot))}
+                onAttack={(regionId) => act(() => beginBattle(run, profile, regionId, run.configSnapshot, catalog))}
               />
             )}
             {screen === 'battle' && run && (
@@ -284,9 +316,9 @@ export function App() {
                 run={run}
                 catalog={catalog}
                 profile={profile}
-                onAdd={(motifId) => act(() => resolveReward(run, profile, { type: 'add', motifId }))}
-                onRemove={(motifId) => act(() => resolveReward(run, profile, { type: 'remove', motifId }))}
-                onContinue={() => act(() => resolveReward(run, profile, { type: 'continue' }))}
+                onAdd={(motifId) => act(() => resolveReward(run, profile, { type: 'add', motifId }, catalog))}
+                onRemove={(motifId) => act(() => resolveReward(run, profile, { type: 'remove', motifId }, catalog))}
+                onContinue={() => act(() => resolveReward(run, profile, { type: 'continue' }, catalog))}
               />
             )}
             {screen === 'outcome' && run && <OutcomeScreen run={run} onHome={() => setView('home')} />}
@@ -301,12 +333,7 @@ export function App() {
                   setProfile(next);
                   void saveProfile(next);
                 }}
-                onReset={() => {
-                  if (!window.confirm('Erase discoveries, texts, and upgrades on this browser?')) return;
-                  const next = emptyProfile(catalog.catalogVersion);
-                  commit({ run: null, profile: next });
-                  setView('home');
-                }}
+                onReset={() => setConfirmWipe(true)}
                 onExport={() => {
                   void exportSave(profile, run).then((raw) => {
                     const blob = new Blob([raw], { type: 'application/json' });
@@ -337,6 +364,19 @@ export function App() {
           </>
         )}
       </main>
+      {confirmWipe && (
+        <div className="wipe-layer">
+          <div className="guide-scrim" onClick={() => setConfirmWipe(false)} />
+          <article className="guide-card" role="dialog" aria-modal="true" aria-label="Erase the library">
+            <h2>Erase the library?</h2>
+            <p>This clears every motif you have seen, every text, the guide, and the current run on this browser.</p>
+            <div className="actions">
+              <button type="button" onClick={() => setConfirmWipe(false)}>Cancel</button>
+              <button type="button" className="primary" onClick={wipeLibrary}>Erase</button>
+            </div>
+          </article>
+        </div>
+      )}
       {guideView && (
         <GuideOverlay
           view={guideView}
@@ -348,8 +388,9 @@ export function App() {
           onDismiss={(id) => {
             const dismissed = profile?.guide?.dismissed ?? [];
             if (dismissed.includes(id) || !profile) return;
-            writeGuide({ beat: guideView.beat, dismissed: [...dismissed, id] });
+            writeGuide({ beat: guideView.beat, dismissed: [...dismissed, id], known: profile.guide?.known ?? [], off: profile.guide?.off ?? [] });
           }}
+          onClose={closeGuide}
         />
       )}
       {ceremony && catalog && profile && (

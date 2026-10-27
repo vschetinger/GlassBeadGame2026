@@ -15,6 +15,7 @@ import type {
   RunState,
   SimilarityTables,
 } from './types';
+import { bestHandScore, waveScores } from './targets';
 import { generateRegions } from './worldgen';
 
 export interface StepResult {
@@ -82,6 +83,39 @@ export function attackableRegionIds(run: RunState): string[] {
     .map((region) => region.id);
 }
 
+export function lockFrontier(run: RunState, profile: Profile, catalog: Catalog): RunState {
+  const difficulty = run.configSnapshot.difficulty;
+  if (difficulty.targetModel !== 'potential') return run;
+  const openIds = new Set(attackableRegionIds(run));
+  const open = run.regions
+    .filter((region) => openIds.has(region.id) && region.targetLocked !== true)
+    .sort((a, b) => a.hopDistance - b.hopDistance || a.id.localeCompare(b.id));
+  if (open.length === 0) return run;
+  const hands = run.configSnapshot.combat.baseHands + run.allocationSnapshot.hands;
+  const cards = run.deckMotifIds.flatMap((id) => {
+    const motif = catalog.motifs[catalog.motifIndex.get(id) ?? -1];
+    if (!motif) return [];
+    return [{ id, rank: motif.rank, suit: motif.suit, wild: motif.wild, chips: chipValue(motif.rank) }];
+  });
+  const best = bestHandScore(
+    cards,
+    pokerHands,
+    run.configSnapshot.combat.maxCardsPerPlay,
+    (hand) => grantsFor(guideContent.notes, profile, hand),
+  );
+  const scores = waveScores(best * hands, open.length, difficulty.waveLow, difficulty.waveHigh, difficulty.scoreStep);
+  if (scores.length !== open.length) return run;
+  const byId = new Map(open.map((region, index) => [region.id, scores[index]]));
+  return {
+    ...run,
+    regions: run.regions.map((region) => {
+      const target = byId.get(region.id);
+      if (target === undefined) return region;
+      return { ...region, targetScore: target, targetLocked: true };
+    }),
+  };
+}
+
 export function createRun(
   seed: string,
   config: BalanceConfig,
@@ -102,7 +136,16 @@ export function createRun(
   const start = regions.find((region) => region.hopDistance === 0);
   if (!start) throw new Error('World generation did not choose a home region.');
   const conquered = config.world.startRegionInitiallyConquered ? [start.id] : [];
-  const deckMotifIds = rng.shuffle(worldMotifIds).slice(0, config.deck.startingSize);
+  const homePool = rng.shuffle(start.motifIds.slice());
+  let deckMotifIds = homePool.slice(0, config.deck.startingSize);
+  if (deckMotifIds.length < config.deck.startingSize) {
+    const rest = rng.shuffle(worldMotifIds.filter((id) => !deckMotifIds.includes(id)));
+    deckMotifIds = deckMotifIds.concat(rest.slice(0, config.deck.startingSize - deckMotifIds.length));
+  }
+  const nextProfile: Profile = {
+    ...profile,
+    statistics: { ...profile.statistics, runs: profile.statistics.runs + 1 },
+  };
   const run: RunState = {
     schemaVersion: 1,
     catalogVersion: catalog.catalogVersion,
@@ -120,13 +163,7 @@ export function createRun(
     handsPlayed: 0,
     seenMotifIds: [],
   };
-  return {
-    run,
-    profile: {
-      ...profile,
-      statistics: { ...profile.statistics, runs: profile.statistics.runs + 1 },
-    },
-  };
+  return { run: lockFrontier(run, nextProfile, catalog), profile: nextProfile };
 }
 
 export function inspectRegion(profile: Profile, run: RunState, regionId: string): StepResult {
@@ -138,12 +175,13 @@ export function inspectRegion(profile: Profile, run: RunState, regionId: string)
   };
 }
 
-export function beginBattle(run: RunState, profile: Profile, regionId: string, config: BalanceConfig): StepResult {
-  if (run.status !== 'active' || run.pendingRewardRegionId || run.battle?.status === 'active') return { run, profile };
-  if (!attackableRegionIds(run).includes(regionId)) return { run, profile };
-  const region = run.regions.find((item) => item.id === regionId);
-  if (!region) return { run, profile };
-  const rng = mulberry32(run.rngState);
+export function beginBattle(run: RunState, profile: Profile, regionId: string, config: BalanceConfig, catalog: Catalog): StepResult {
+  const prepared = lockFrontier(run, profile, catalog);
+  if (prepared.status !== 'active' || prepared.pendingRewardRegionId || prepared.battle?.status === 'active') return { run: prepared, profile };
+  if (!attackableRegionIds(prepared).includes(regionId)) return { run: prepared, profile };
+  const region = prepared.regions.find((item) => item.id === regionId);
+  if (!region) return { run: prepared, profile };
+  const rng = mulberry32(prepared.rngState);
   const battle: BattleState = {
     regionId,
     drawPileIds: rng.shuffle(run.deckMotifIds),
@@ -160,7 +198,7 @@ export function beginBattle(run: RunState, profile: Profile, regionId: string, c
   };
   drawUp(battle, rng, config);
   return {
-    run: see({ ...run, rngState: rng.state(), battle, lastPlay: undefined }, battle.visibleHandIds),
+    run: see({ ...prepared, rngState: rng.state(), battle, lastPlay: undefined }, battle.visibleHandIds),
     profile: withEncounters(profile, battle.visibleHandIds),
   };
 }
@@ -315,7 +353,10 @@ export function returnToMap(run: RunState): RunState {
 export function rewardOptions(run: RunState): { canAdd: boolean; canRemove: boolean; addableIds: string[]; removableIds: string[] } {
   const region = run.regions.find((item) => item.id === run.pendingRewardRegionId);
   const addableIds = region ? region.motifIds.filter((id) => !run.deckMotifIds.includes(id)) : [];
-  const removableIds = run.deckMotifIds.length > run.configSnapshot.deck.minimumSize ? run.deckMotifIds.slice() : [];
+  const reward = run.configSnapshot.deck.reward ?? 'either';
+  const removableIds = reward === 'add' || run.deckMotifIds.length <= run.configSnapshot.deck.minimumSize
+    ? []
+    : run.deckMotifIds.slice();
   return {
     canAdd: addableIds.length > 0,
     canRemove: removableIds.length > 0,
@@ -328,6 +369,7 @@ export function resolveReward(
   run: RunState,
   profile: Profile,
   choice: { type: 'add'; motifId: string } | { type: 'remove'; motifId: string } | { type: 'continue' },
+  catalog?: Catalog,
 ): StepResult {
   if (!run.pendingRewardRegionId || run.status !== 'active') return { run, profile };
   const options = rewardOptions(run);
@@ -343,19 +385,21 @@ export function resolveReward(
   }
   const conquered = unique(run.conqueredRegionIds, [run.pendingRewardRegionId]);
   const won = conquered.length === run.regions.length;
+  const nextProfile = won
+    ? { ...profile, statistics: { ...profile.statistics, wins: profile.statistics.wins + 1 } }
+    : profile;
+  const settled: RunState = {
+    ...run,
+    deckMotifIds: deck,
+    conqueredRegionIds: conquered,
+    pendingRewardRegionId: undefined,
+    battle: undefined,
+    status: won ? 'won' : 'active',
+    lastPlay: undefined,
+  };
   return {
-    run: {
-      ...run,
-      deckMotifIds: deck,
-      conqueredRegionIds: conquered,
-      pendingRewardRegionId: undefined,
-      battle: undefined,
-      status: won ? 'won' : 'active',
-      lastPlay: undefined,
-    },
-    profile: won
-      ? { ...profile, statistics: { ...profile.statistics, wins: profile.statistics.wins + 1 } }
-      : profile,
+    run: catalog ? lockFrontier(settled, nextProfile, catalog) : settled,
+    profile: nextProfile,
   };
 }
 

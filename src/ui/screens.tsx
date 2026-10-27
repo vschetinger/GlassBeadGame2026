@@ -83,7 +83,7 @@ export function HomeScreen(props: {
   return (
     <section className="home">
       <p className="lede">
-        Each run draws two hundred folklore motifs and twenty deities. You conquer the neighboring gods with poker hands. Playing a card reveals its Tarot face forever. The deck itself does not survive the run.
+        A run begins with a small deck from the land you already hold. You are dealt as many cards as the deck has, up to five, and you play them as poker. Winning a land lets you take one new card from it. Playing a card reveals its rank forever. The deck does not survive the run.
       </p>
       <div className="home-actions" data-hook="start-run">
         {props.canContinue && <button className="primary" data-hook="continue" onClick={props.onContinue}>Continue</button>}
@@ -163,7 +163,7 @@ export function MapScreen(props: {
       </svg>
       <aside className="panel">
         <h2>{deity?.name}</h2>
-        <p className="meta">{deity?.pantheon} · hop {selected.hopDistance} · {selected.motifIds.length} motifs · target {selected.targetScore}</p>
+        <p className="meta">{deity?.pantheon} · hop {selected.hopDistance}{selected.targetScore > 0 ? ` · target ${selected.targetScore}` : ''}</p>
         <p>{deity?.description}</p>
         <div className="actions">
           <button
@@ -424,6 +424,7 @@ export function RewardScreen(props: {
 }) {
   const [choice, setChoice] = useState<{ type: 'add' | 'remove'; motifId: string } | null>(null);
   const options = rewardOptions(props.run);
+  const adding = (props.run.configSnapshot.deck.reward ?? 'either') === 'add';
   const region = props.run.regions.find((item) => item.id === props.run.pendingRewardRegionId);
   const deity = region ? props.catalog.deities[props.catalog.deityIndex.get(region.deityId)!] : undefined;
   function pick(type: 'add' | 'remove', motifId: string) {
@@ -433,7 +434,11 @@ export function RewardScreen(props: {
   return (
     <section>
       <h2>{deity?.name} is conquered</h2>
-      <p className="lede">Choose one motif to add from this domain, or one card to remove from your deck. Nothing changes until you confirm.</p>
+      <p className="lede">
+        {adding
+          ? 'Choose one new card from this land. It joins the deck. Nothing changes until you confirm.'
+          : 'Choose one motif to add from this domain, or one card to remove from your deck. Nothing changes until you confirm.'}
+      </p>
       {props.run.lastPlay && <PlayBreakdown play={props.run.lastPlay} catalog={props.catalog} />}
       <div className="split">
         <div>
@@ -450,8 +455,9 @@ export function RewardScreen(props: {
               />
             ))}
           </div>
-          {!options.canAdd && <p className="meta">Every motif from this domain is already in the deck.</p>}
+          {!options.canAdd && <p className="meta">This land has no card you do not already hold.</p>}
         </div>
+        {!adding && (
         <div>
           <h3>Remove</h3>
           <div className="choice-grid">
@@ -468,6 +474,7 @@ export function RewardScreen(props: {
           </div>
           {!options.canRemove && <p className="meta">The deck is at its minimum size.</p>}
         </div>
+        )}
       </div>
       {(options.canAdd || options.canRemove) && (
         <div className="reward-confirm">
@@ -485,7 +492,7 @@ export function RewardScreen(props: {
         </div>
       )}
       {!options.canAdd && !options.canRemove && (
-        <button className="primary" onClick={props.onContinue}>Continue without a change</button>
+        <button className="primary" onClick={props.onContinue}>{adding ? 'Continue' : 'Continue without a change'}</button>
       )}
     </section>
   );
@@ -567,7 +574,7 @@ export function EncyclopediaScreen(props: { catalog: Catalog; profile: Profile }
         </>
       ) : (
         <div>
-          <p className="meta">{texts.length} unlocked of {props.catalog.texts.length}. Resonance threshold {props.catalog.textThreshold.toFixed(3)}.</p>
+          <p className="meta">{texts.length} texts in the library.</p>
           {texts.map((text) => (
             <article className="panel" key={text.id}>
               <h2>{text.name}</h2>

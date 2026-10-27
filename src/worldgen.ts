@@ -331,7 +331,8 @@ export function generateRegions(
       ],
       neighborRegionIds: [],
       hopDistance: hops[local],
-      targetScore: targetScore(hops[local], motifIdsForRegion.length, config),
+      targetScore: config.difficulty.targetModel === 'potential' ? 0 : targetScore(hops[local], motifIdsForRegion.length, config),
+      targetLocked: config.difficulty.targetModel !== 'potential',
     };
   });
 

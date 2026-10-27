@@ -1,16 +1,18 @@
 # Balancing
 
-Knobs live in `content/balance/default.md`, `content/balance/short.md`, `content/games/poker.md`, and `content/games/ranks.md`. The short-run file lowers the world to 60 motifs and 6 regions and sets `baseTarget` to 70. A new run copies the file it started from. Canonical defaults are below.
+Knobs live in `content/balance/default.md`, `content/balance/short.md`, `content/games/poker.md`, and `content/games/ranks.md`. The full run draws 32 motifs into 8 lands and starts with 2 cards. The short run draws 18 motifs into 5 lands and keeps the same deck and target model. A new run copies the file it started from. An unfinished run keeps the copy it already has. Canonical defaults are below.
 
 ## Combat score
 
 Level-1 Balatro values. Card chips are added to the hand chips before the multiplier. Folklore is a flat bonus after that product. There is no hand leveling.
 
-A pair of aces scores `(10 + 11 + 11) × 2 = 64`. A flush of five modest cards is around two hundred points. The hand shows 8 cards and a play uses at most 5, from a starting deck of 15. The first frontier (hop 1) therefore asks for about `100 × 1.5 = 150`, rounded to the nearest 10, with a small size adjustment. Deeper hops multiply by 1.5 again. These targets are a starting point for playtesting.
+A pair of aces scores `(10 + 11 + 11) × 2 = 64`. Two twos score `(10 + 2 + 2) × 2 = 28`. Two unmatched low cards score a high card, about 8. The hand deals at most 5 cards, and a smaller deck deals every card it has. A fresh fight has 4 hands, so a pair of twos played perfectly is 112 and two low cards played perfectly are 32.
+
+`difficulty.targetModel: potential` freezes a land's target when that land first becomes attackable. The wave runs from `waveLow` 0.45 to `waveHigh` 1.15 of that perfect total, so one neighbor is attainable and another is a risk. Growing the deck does not raise a target that is already set. The next ring is priced from the deck you have when it opens. `hop` is still available and uses `baseTarget × hopMultiplier ^ hop`.
 
 ## Region size
 
-`sizeSlope` 0.015, clamped to 0.90–1.15. Hop distance moves the target more than region size does.
+Lands are small: at least 3 motifs, about 4 on a full run. `sizeSlope` 0.015, clamped to 0.90–1.15, still applies when `targetModel` is `hop`. A victory offers one new card from that land (`deck.reward: add`). Deck trimming is the `either` reward, and it is not the current opening.
 
 ## Text resonance
 
