@@ -2,7 +2,7 @@
 
 You are adding content to the Glass Bead roguelite. Add one markdown file per beat under `content/events/`. Do not edit TypeScript, CSS, or this file unless the person you are talking to explicitly asks for an engine change.
 
-The game already plays. These notes only steer a guide that sits on top of it: a dialog, a coach mark on a real button, or a small banner. A later version may turn the same notes into the map of the whole game. Write notes that would still make sense then.
+The game already plays. These notes steer a guide that sits on top of it: a dialog, a coach mark, a banner, a hover term, or a skill the player can turn off. A fight is one session of the poker game in `content/games/poker.md`. A later version may turn the same notes into the map of the whole game. Write notes that would still make sense then.
 
 ## A note is a node
 
@@ -29,6 +29,11 @@ Frontmatter is flat `key: value` lines between `---`. There are no lists, no nes
 | `title` | no | Heading. Defaults to the id. |
 | `show` | no | `dialog`, `coach`, `page`, or `banner`. Omit it for a silent gate. |
 | `at` | when `show: coach` | Which control to point at. See hooks below. |
+| `kind` | no | `note` (the default) or `skill`. |
+| `bind` | no | Once this note is known, hover the named mark to read it. The only mark today is `seal`, the ? on a card whose rank is hidden. |
+| `when` | on a skill | A hand id from `content/games/poker.md`, or `any`. |
+| `chips` | on a skill | Whole number added to the hand's chips before the multiplier. |
+| `mult` | on a skill | Whole number added to the hand's multiplier. |
 
 `id` may contain dots (`lesson.fifty`). Do not use spaces.
 
@@ -85,6 +90,109 @@ At most two `+` banners show at once, in file order. The rest wait until one is 
 
 Opening a banner sets the beat to that note. Leaving it with a `?` remembers the offer, so it does not come back. Dismissing the banner without opening remembers it too.
 
+## Meta-links
+
+A wikilink in a sentence is not an edge. It is a term:
+
+```markdown
+A [[term.rank|?]] on a card is an unknown rank.
+```
+
+The words after the bar are what the player reads. While this note is open, those words can be hovered, and the hover shows the other note. Closing this note with a `?` button adds both notes to `known`. After that, the term can be hovered from the rest of the interface.
+
+`bind` is how a known note attaches to a mark that is not a sentence. `bind: seal` puts the note on the ? of every card whose rank is still hidden. One known note per mark; if two known notes bind the same mark, the first file in alphabetical order wins.
+
+`known` is the player's ontology of rules: the notes they have closed, and the terms those notes named. It is not the motif library. Motifs you have seen stay on `seen_total`.
+
+## Skills
+
+A skill is a note with `kind: skill`. It needs `chips`, `mult`, or both. `when` names one hand, or `any`.
+
+```markdown
+---
+id: skill.studied-hand
+title: Studied hand
+kind: skill
+show: page
+when: any
+chips: 4
+---
+
+Every hand scores 4 extra chips before the multiplier.
+
+? [[playing|Keep going]]
+```
+
+Offer it from `playing` with a `+` line, the same way as a lesson. Closing the skill turns it on. The bar then shows its name with a checkbox. The player can turn it off and on. A skill that is off does not change the score. Chips from every skill that is on are added together, then the multipliers, then the hand is `(hand chips + card chips + skill chips) × (hand multiplier + skill multipliers)`.
+
+## The poker game
+
+`content/games/poker.md` is the hand table for every fight. A fight stores `game: poker` and scores with that file. The lines are best first:
+
+```text
+pair | 10 | 2 | Pair
+```
+
+That is hand id, chips, multiplier, label. The ids are fixed, because the engine still decides whether five cards are a pair, a straight, or a flush. You may change the numbers and the labels, and you may reorder the lines. `highCard` has to remain, and it should stay last. An unknown id is skipped.
+
+A later version can replace the match for each id with a small composition of predicates. The line above is the place those predicates would sit. Do not invent a new id until the engine knows how to recognize it.
+
+`content/games/ranks.md` is the chip value of each rank. One line per rank, and every rank has to be there:
+
+```text
+A | 11
+King | 10
+10 | 10
+```
+
+The ranks are `2` through `10`, `Page`, `Knight`, `Queen`, `King`, and `A`. These chips are added for each scoring card before the hand multiplier.
+
+## Run numbers
+
+`content/balance/default.md` is the full run. `content/balance/short.md` lists only the lines that differ. A new run copies the file it started from, so a change shows up on the next run.
+
+A line is `group.name: value`. Numbers are whole or decimal. `true` and `false` are the switches. A list is commas. `catalog` on `texts.similarityThreshold` means "use the threshold shipped with the motif catalog."
+
+| Key | What it changes |
+| --- | --- |
+| `world.motifsPerRun` | How many motifs are drawn into the run. |
+| `world.regionsPerRun` | How many gods are on the map. |
+| `world.optimizationSwaps` | How hard the map tries to keep similar motifs together. |
+| `world.optimizationNoise` | How much that grouping is allowed to wobble. `0` is exact. |
+| `world.minMotifsPerRegion` | Smallest land. |
+| `world.startRegionInitiallyConquered` | Home starts held. |
+| `deck.startingSize` | Cards in a new deck. |
+| `deck.minimumSize` | The deck cannot be rewarded below this. |
+| `combat.visibleHandSize` | Cards dealt into the hand. |
+| `combat.maxCardsPerPlay` | Cards that can be played at once. The cap is 5. |
+| `combat.baseHands` | Hands in a fight, before upgrades. |
+| `combat.baseDiscards` | Discards in a fight, before upgrades. |
+| `combat.baseLives` | Lives at the start of a run, before upgrades. |
+| `combat.reshuffleOnEmpty` | The discard pile is shuffled back when the draw pile is empty. |
+| `difficulty.baseTarget` | Score asked of the first land, before hop and size. |
+| `difficulty.hopMultiplier` | Each step away from home multiplies the target by this. It must be greater than 1. |
+| `difficulty.expectedRegionSize` | Region size that does not change the target. |
+| `difficulty.sizeSlope` | How much a bigger or smaller land moves the target. |
+| `difficulty.sizeMin` | Floor of that size adjustment. |
+| `difficulty.sizeMax` | Ceiling of that size adjustment. |
+| `difficulty.scoreStep` | Targets are rounded to this step. |
+| `texts.minResonantCards` | Motifs that must resemble a text before it notices the hand. |
+| `texts.similarityThreshold` | How close a motif must be. `catalog`, or a decimal such as `0.7`. |
+| `texts.baseBonus` | Flat points from a text you have already unlocked. |
+| `texts.perExtraCardBonus` | Extra points for each resonant motif past the minimum. |
+| `texts.maxActiveBonusesPerHand` | How many texts can score on one hand. |
+| `progression.pointThresholds` | Discovered-motif counts that grant an upgrade point. |
+| `progression.upgrades.hands.cost` | Points for one extra hand per fight. |
+| `progression.upgrades.hands.max` | Cap on that upgrade. |
+| `progression.upgrades.discards.cost` | Points for one extra discard. |
+| `progression.upgrades.discards.max` | Cap on that upgrade. |
+| `progression.upgrades.lives.cost` | Points for one extra life. |
+| `progression.upgrades.lives.max` | Cap on that upgrade. |
+
+The target for a land is `baseTarget × hopMultiplier ^ hop`, nudged by how many motifs that land holds, then rounded to `scoreStep`. A full run's first neighbor is about `100 × 1.5 = 150`.
+
+Four keys are stored and reserved. Changing them does not change play yet: `deck.allowDuplicates`, `texts.newDiscoveryScoresImmediately`, `texts.bonusAppliedAfterPokerMultiplier`, `progression.respecBetweenRuns`.
+
 ## Counters you may test
 
 These are the only names that fire. Anything else warns and never matches.
@@ -140,7 +248,9 @@ Do not reuse these ids.
 | `library-tip` | Coach on the library. |
 | `playing` | Silent sink. Offers the lessons below. |
 | `returning` | Anyone who has already seen a motif. |
-| `lesson.question-mark` | What `?` means on a card. |
+| `lesson.question-mark` | What `?` means on a card. Names `term.rank`. |
+| `term.rank` | The hover text for a hidden rank. Bound to the seal. |
+| `skill.studied-hand` | A skill: +4 chips on every hand, and a checkbox. |
 | `lesson.this-run` | Seen this run versus the library. |
 | `lesson.frontier` | The map is a neighbor graph. |
 | `lesson.fifty` | Fifty motifs seen. |
@@ -178,7 +288,7 @@ That is the whole change. No new button code.
 - One idea per note.
 - A `?` label is a short action: "Keep playing", "Open the library".
 - Do not put a counter test in a `?` label. `? [[next|seen_run >= 5]]` would print that formula on the button.
-- Do not invent counters, hooks, or `show` values.
+- Do not invent counters, hooks, `show` values, `bind` marks, `kind` values, or hand ids.
 - Do not write JavaScript, HTML, or YAML lists.
 - Prose may name a motif, a god, or a rule. It must not depend on a specific seed, because every run is random.
-- If a sentence needs a link that is not an edge, write the name in words. A wikilink in the middle of a sentence is still prose, and the brackets are hidden when it is shown.
+- A wikilink in a sentence is a meta-link. Use it when the player should be able to hover that word. A name that needs no note is written in words.

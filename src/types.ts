@@ -131,6 +131,8 @@ export interface UpgradeAllocation {
 export interface GuideMemory {
   beat: string;
   dismissed: string[];
+  known?: string[];
+  off?: string[];
 }
 
 export interface Profile {
@@ -161,6 +163,7 @@ export interface RegionState {
 
 export interface BattleState {
   regionId: string;
+  game?: string;
   drawPileIds: string[];
   discardPileIds: string[];
   playedPileIds: string[];
@@ -191,6 +194,8 @@ export interface LastPlay {
   cardChips?: number;
   multiplier?: number;
   pokerSubtotal?: number;
+  skillChips?: number;
+  skillLabel?: string;
   folkloreBonus?: number;
   folklore?: FolkloreHit[];
   total?: number;

@@ -363,6 +363,32 @@ input, select {
   .topbar { align-items: flex-start; flex-direction: column; }
 }
 
+.skill-toggle { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--brass); }
+
+.term {
+  border-bottom: 1px dotted var(--brass);
+  cursor: help;
+}
+
+.term.seal { border-bottom: 0; cursor: help; }
+
+.term-card {
+  position: fixed;
+  z-index: 60;
+  width: min(18rem, 80vw);
+  padding: 0.7rem 0.8rem;
+  background: var(--bg-raise);
+  border: 1px solid var(--brass);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-weight: 400;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.term-card strong { display: block; margin-bottom: 0.3rem; color: var(--brass); }
+
 .guide-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
 
 .guide-scrim {

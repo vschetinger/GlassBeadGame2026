@@ -1,10 +1,17 @@
+import { BEST_FIRST } from '../poker';
 import { isKnownCounter, KNOWN_HOOKS } from './counters';
 
 export type Glyph = '>' | '+' | '?';
 export type StageShow = 'dialog' | 'coach' | 'banner' | 'page';
+export type NoteKind = 'note' | 'skill';
 
 export interface Edge {
   glyph: Glyph;
+  to: string;
+  label: string;
+}
+
+export interface Mention {
   to: string;
   label: string;
 }
@@ -14,14 +21,53 @@ export interface Note {
   title: string;
   show?: StageShow;
   at?: string;
+  kind: NoteKind;
+  bind?: string;
+  when?: string;
+  chips?: number;
+  mult?: number;
   body: string;
   edges: Edge[];
+  mentions: Mention[];
 }
 
 const EDGE = /^([>+?])\s+\[\[([^\]|]+)(?:\|([^\]]*))?\]\]\s*$/;
+const MENTION = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 const CONDITION = /^([a-z][a-z0-9_]*)\s*(==|!=|>=|<=|>|<)\s*(\d+)$/;
 const SHOWS = new Set<StageShow>(['dialog', 'coach', 'banner', 'page']);
+const KINDS = new Set<NoteKind>(['note', 'skill']);
+const BINDS = new Set(['seal']);
+const HANDS = new Set<string>(BEST_FIRST);
 const HOOKS = new Set<string>(KNOWN_HOOKS);
+
+export function mentionsIn(body: string): Mention[] {
+  return [...body.matchAll(new RegExp(MENTION.source, 'g'))].map((match) => ({
+    to: match[1].trim(),
+    label: (match[2] ?? match[1]).trim(),
+  }));
+}
+
+export function splitMentions(text: string): Array<{ kind: 'text'; text: string } | Mention & { kind: 'mention' }> {
+  const parts: Array<{ kind: 'text'; text: string } | Mention & { kind: 'mention' }> = [];
+  const pattern = new RegExp(MENTION.source, 'g');
+  let last = 0;
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    if (index > last) parts.push({ kind: 'text', text: text.slice(last, index) });
+    parts.push({ kind: 'mention', to: match[1].trim(), label: (match[2] ?? match[1]).trim() });
+    last = index + match[0].length;
+  }
+  if (last < text.length) parts.push({ kind: 'text', text: text.slice(last) });
+  return parts;
+}
+
+export function learnedIds(note: Note | undefined, already: string[]): string[] {
+  if (!note) return already;
+  const next = new Set(already);
+  next.add(note.id);
+  for (const mention of note.mentions) next.add(mention.to);
+  return [...next];
+}
 
 export function conditionParts(label: string): { name: string; op: string; value: number } | null {
   const match = label.trim().match(CONDITION);
@@ -83,6 +129,15 @@ export function parseNote(raw: string, source = 'note'): { note: Note | null; wa
   const at = meta.at?.trim() || undefined;
   if (show === 'coach' && !at) warnings.push(`${id}: coach is missing at`);
   if (at && !HOOKS.has(at)) warnings.push(`${id}: unknown hook "${at}"`);
+  const kind = (meta.kind?.trim() || 'note') as NoteKind;
+  if (!KINDS.has(kind)) warnings.push(`${id}: unknown kind "${meta.kind}"`);
+  const bind = meta.bind?.trim() || undefined;
+  if (bind && !BINDS.has(bind)) warnings.push(`${id}: unknown bind "${bind}"`);
+  const when = meta.when?.trim() || undefined;
+  if (when && when !== 'any' && !HANDS.has(when)) warnings.push(`${id}: unknown hand "${when}"`);
+  const chips = readCount(meta.chips, id, 'chips', warnings);
+  const mult = readCount(meta.mult, id, 'mult', warnings);
+  if (kind === 'skill' && chips == null && mult == null) warnings.push(`${id}: a skill needs chips or mult`);
   const cleaned = prose.join('\n').trim();
   return {
     note: {
@@ -90,8 +145,14 @@ export function parseNote(raw: string, source = 'note'): { note: Note | null; wa
       title: meta.title?.trim() || id,
       show: show && SHOWS.has(show) ? show : undefined,
       at,
+      kind: KINDS.has(kind) ? kind : 'note',
+      bind,
+      when,
+      chips,
+      mult,
       body: cleaned,
       edges,
+      mentions: mentionsIn(cleaned),
     },
     warnings,
   };
@@ -114,8 +175,20 @@ export function parseNotes(raws: { source: string; raw: string }[]): { notes: No
     for (const edge of note.edges) {
       if (!ids.has(edge.to)) warnings.push(`${note.id}: [[${edge.to}]] does not exist`);
     }
+    for (const mention of note.mentions) {
+      if (!ids.has(mention.to)) warnings.push(`${note.id}: [[${mention.to}]] does not exist`);
+    }
   }
   return { notes, warnings };
+}
+
+function readCount(raw: string | undefined, id: string, key: string, warnings: string[]): number | undefined {
+  if (!raw) return undefined;
+  if (!/^\d+$/.test(raw)) {
+    warnings.push(`${id}: ${key} must be a whole number`);
+    return undefined;
+  }
+  return Number(raw);
 }
 
 function readMeta(block: string): Record<string, string> {

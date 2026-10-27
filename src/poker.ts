@@ -29,7 +29,7 @@ export const HAND_TABLE: Record<HandId, { chips: number; mult: number; label: st
   flushFive: { chips: 160, mult: 16, label: 'Flush Five' },
 };
 
-const BEST_FIRST: HandId[] = [
+export const BEST_FIRST: HandId[] = [
   'flushFive',
   'flushHouse',
   'fiveOfAKind',
@@ -52,6 +52,26 @@ export interface PokerCard {
   chips: number;
 }
 
+export interface HandRule {
+  id: HandId;
+  chips: number;
+  mult: number;
+  label: string;
+}
+
+export interface SkillGrant {
+  title: string;
+  chips: number;
+  mult: number;
+}
+
+export const DEFAULT_HANDS: HandRule[] = BEST_FIRST.map((id) => ({
+  id,
+  chips: HAND_TABLE[id].chips,
+  mult: HAND_TABLE[id].mult,
+  label: HAND_TABLE[id].label,
+}));
+
 export interface PokerScore {
   category: HandId;
   label: string;
@@ -60,14 +80,21 @@ export interface PokerScore {
   cardChips: number;
   multiplier: number;
   pokerSubtotal: number;
+  skillChips?: number;
+  skillLabel?: string;
 }
 
 const COURT = new Set<PokerRank>(['Page', 'Knight', 'Queen', 'King']);
 
-export function chipsForRank(rank: PokerRank): number {
+export function builtinChips(rank: PokerRank): number {
   if (rank === 'A') return 11;
   if (COURT.has(rank)) return 10;
   return Number(rank);
+}
+
+export function chipsForRank(rank: PokerRank, chips?: Partial<Record<PokerRank, number>>): number {
+  const value = chips?.[rank];
+  return value ?? builtinChips(rank);
 }
 
 export function majorNumberToRank(number: number): PokerRank {
@@ -149,26 +176,39 @@ function matches(id: HandId, cards: PokerCard[]): string[] | null {
   return [best.id];
 }
 
-export function evaluatePoker(cards: PokerCard[]): PokerScore {
+export function evaluatePoker(cards: PokerCard[], hands: HandRule[] = DEFAULT_HANDS): PokerScore {
   if (cards.length < 1 || cards.length > 5) {
     throw new Error('A play must contain 1 to 5 cards.');
   }
-  for (const id of BEST_FIRST) {
-    const scoringCardIds = matches(id, cards);
+  for (const hand of hands) {
+    const scoringCardIds = matches(hand.id, cards);
     if (!scoringCardIds) continue;
-    const table = HAND_TABLE[id];
     const cardChips = cards
       .filter((card) => scoringCardIds.includes(card.id))
       .reduce((sum, card) => sum + card.chips, 0);
     return {
-      category: id,
-      label: table.label,
+      category: hand.id,
+      label: hand.label,
       scoringCardIds,
-      baseChips: table.chips,
+      baseChips: hand.chips,
       cardChips,
-      multiplier: table.mult,
-      pokerSubtotal: (table.chips + cardChips) * table.mult,
+      multiplier: hand.mult,
+      pokerSubtotal: (hand.chips + cardChips) * hand.mult,
     };
   }
   throw new Error('Every selection contains a high card.');
+}
+
+export function applyGrants(score: PokerScore, grants: SkillGrant[]): PokerScore {
+  const skillChips = grants.reduce((sum, grant) => sum + grant.chips, 0);
+  const skillMult = grants.reduce((sum, grant) => sum + grant.mult, 0);
+  if (skillChips === 0 && skillMult === 0) return score;
+  const multiplier = score.multiplier + skillMult;
+  return {
+    ...score,
+    multiplier,
+    skillChips,
+    skillLabel: grants.map((grant) => grant.title).filter(Boolean).join(', '),
+    pokerSubtotal: (score.baseChips + score.cardChips + skillChips) * multiplier,
+  };
 }

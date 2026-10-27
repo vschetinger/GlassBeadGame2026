@@ -1,5 +1,8 @@
 import { validateConfig } from './config';
-import { chipsForRank, evaluatePoker, type PokerScore } from './poker';
+import { chipValue, pokerHands } from './games/load';
+import { guideContent } from './guide/load';
+import { grantsFor } from './guide/skills';
+import { applyGrants, evaluatePoker, type PokerScore } from './poker';
 import { resonate } from './resonance';
 import { mulberry32, rngFromSeed, type Rng } from './rng';
 import type {
@@ -153,6 +156,7 @@ export function beginBattle(run: RunState, profile: Profile, regionId: string, c
     accumulatedScore: 0,
     targetScore: region.targetScore,
     status: 'active',
+    game: 'poker',
   };
   drawUp(battle, rng, config);
   return {
@@ -214,10 +218,10 @@ export function commitPlay(
       rank: motif.rank,
       suit: motif.suit,
       wild: motif.wild,
-      chips: chipsForRank(motif.rank),
+      chips: chipValue(motif.rank),
     };
   });
-  const poker = evaluatePoker(cards);
+  const poker = scoreHand(cards, profile, battle.game);
   const threshold = config.texts.similarityThreshold ?? catalog.textThreshold;
   const resonance = resonate(catalog, tables, {
     playedMotifIds: selected,
@@ -258,6 +262,8 @@ export function commitPlay(
     cardChips: poker.cardChips,
     multiplier: poker.multiplier,
     pokerSubtotal: poker.pokerSubtotal,
+    skillChips: poker.skillChips,
+    skillLabel: poker.skillLabel,
     folkloreBonus: resonance.bonus,
     folklore: resonance.hits,
     total,
@@ -364,9 +370,9 @@ export function previewPlay(
   if (battle.selectedIds.some((id) => !profile.discoveredMotifIds.includes(id))) return null;
   const cards = battle.selectedIds.map((id) => {
     const motif = catalog.motifs[catalog.motifIndex.get(id)!] as MotifRecord;
-    return { id, rank: motif.rank, suit: motif.suit, wild: motif.wild, chips: chipsForRank(motif.rank) };
+    return { id, rank: motif.rank, suit: motif.suit, wild: motif.wild, chips: chipValue(motif.rank) };
   });
-  const poker = evaluatePoker(cards);
+  const poker = scoreHand(cards, profile, battle.game);
   const resonance = resonate(catalog, tables, {
     playedMotifIds: battle.selectedIds,
     discoveredTextIds: new Set(profile.discoveredTextIds),
@@ -374,6 +380,12 @@ export function previewPlay(
     threshold: run.configSnapshot.texts.similarityThreshold ?? catalog.textThreshold,
   });
   return { poker, folkloreBonus: resonance.bonus };
+}
+
+function scoreHand(cards: Parameters<typeof evaluatePoker>[0], profile: Profile, game: string | undefined): PokerScore {
+  if (game && game !== 'poker') console.warn(`No ruleset named ${game}; this fight uses poker.`);
+  const dealt = evaluatePoker(cards, pokerHands);
+  return applyGrants(dealt, grantsFor(guideContent.notes, profile, dealt.category));
 }
 
 export function pileIds(battle: BattleState): string[] {

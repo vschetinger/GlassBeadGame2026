@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Catalog, LastPlay, MotifRecord, Profile, RunState } from '../types';
 import { attackableRegionIds, rewardOptions } from '../game';
-import { DEFAULT_CONFIG } from '../config';
-import { chipsForRank } from '../poker';
+import { authoredDefault as DEFAULT_CONFIG } from '../balance/load';
+import { chipValue } from '../games/load';
 import { allocationError, earnedPoints, spentPoints } from '../progression';
+import { guideContent } from '../guide/load';
 import { faceLabel, imageUrl, shortRank, suitMark } from './format';
+import { TermTip } from './Term';
 
 function FaceIndex(props: { motif: MotifRecord }) {
   const motif = props.motif;
@@ -55,7 +57,7 @@ export function MotifCard(props: {
       <span className="art">
         <img src={imageUrl(props.catalog.imageBase, motif.image)} alt="" loading="lazy" />
         {showFace && <FaceIndex motif={motif} />}
-        {!showFace && <span className="seal" aria-hidden="true">?</span>}
+        {!showFace && <RankSeal profile={props.profile} />}
         {props.pop != null && <span className="chip-pop">+{props.pop}</span>}
       </span>
       <span className="card-copy">
@@ -64,6 +66,13 @@ export function MotifCard(props: {
       </span>
     </button>
   );
+}
+
+function RankSeal(props: { profile: Profile }) {
+  const known = new Set(props.profile.guide?.known ?? []);
+  const note = guideContent.notes.find((item) => item.bind === 'seal' && known.has(item.id));
+  if (!note) return <span className="seal" aria-hidden="true">?</span>;
+  return <TermTip className="seal" title={note.title} body={note.body}>?</TermTip>;
 }
 
 export function HomeScreen(props: {
@@ -289,10 +298,16 @@ function scoreFrames(play: LastPlay, catalog: Catalog): ScoreFrame[] {
   frames.push({ phase: 'tally', chips, score: 0, caption: play.categoryLabel ?? '' });
   scoring.forEach((id) => {
     const motif = catalog.motifs[catalog.motifIndex.get(id)!];
-    const pop = motif ? chipsForRank(motif.rank) : 0;
+    const pop = motif ? chipValue(motif.rank) : 0;
     chips += pop;
     frames.push({ phase: 'tally', chips, score: 0, hotId: id, pop, caption: play.categoryLabel ?? '' });
   });
+  if (play.skillChips) {
+    chips += play.skillChips;
+    frames.push({ phase: 'tally', chips, score: 0, caption: play.skillLabel || `+${play.skillChips}` });
+  } else if (play.skillLabel) {
+    frames.push({ phase: 'tally', chips, score: 0, caption: play.skillLabel });
+  }
   let score = play.pokerSubtotal ?? chips * (play.multiplier ?? 1);
   frames.push({ phase: 'product', chips, score, caption: `${chips} × ${play.multiplier ?? 1}` });
   (play.folklore ?? []).forEach((hit) => {

@@ -54,6 +54,8 @@ export function reconcileProfile(
     guide: {
       beat: profile.guide?.beat || 'start',
       dismissed,
+      known: Array.isArray(profile.guide?.known) ? profile.guide.known.filter((id) => typeof id === 'string') : [],
+      off: Array.isArray(profile.guide?.off) ? profile.guide.off.filter((id) => typeof id === 'string') : [],
     },
   };
 }

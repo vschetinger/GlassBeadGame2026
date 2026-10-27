@@ -1,6 +1,6 @@
 # Balancing
 
-All knobs live in `src/config.ts`. The short-run preset lowers the world to 60 motifs and 6 regions and sets `baseTarget` to 70. Canonical defaults are below.
+Knobs live in `content/balance/default.md`, `content/balance/short.md`, `content/games/poker.md`, and `content/games/ranks.md`. The short-run file lowers the world to 60 motifs and 6 regions and sets `baseTarget` to 70. A new run copies the file it started from. Canonical defaults are below.
 
 ## Combat score
 
@@ -16,7 +16,7 @@ A pair of aces scores `(10 + 11 + 11) × 2 = 64`. A flush of five modest cards i
 
 Threshold **0.655**, chosen by `scripts/build_catalog.py` so a random five-card play qualifies for about **0.32** texts on average. That count is not the same as a bonus: a text scores only on a later play, and at most two texts score. The measurement is in `public/data/build-report.json`.
 
-Random hands understate real play, because a player can chase motifs that share a tale. If discoveries feel rare or constant, change `texts.similarityThreshold` in the config; a number there overrides the catalog value.
+Random hands understate real play, because a player can chase motifs that share a tale. If discoveries feel rare or constant, set `texts.similarityThreshold` in `content/balance/default.md` to a decimal. `catalog` keeps the shipped threshold.
 
 ## Upgrades
 

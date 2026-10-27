@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { DEFAULT_CONFIG, SHORT_RUN_CONFIG } from './config';
+import { authoredDefault as DEFAULT_CONFIG, authoredShort as SHORT_RUN_CONFIG } from './balance/load';
 import {
   beginBattle,
   commitDiscard,
@@ -13,6 +13,7 @@ import {
 } from './game';
 import { countersFrom } from './guide/counters';
 import { guideContent } from './guide/load';
+import { learnedIds } from './guide/parse';
 import { present } from './guide/walk';
 import { loadGameData } from './loadData';
 import { exportSave, loadProfile, loadRun, saveProfile, saveRun } from './persistence';
@@ -124,7 +125,15 @@ export function App() {
   function writeGuide(guide: GuideMemory) {
     if (!profile) return;
     const settled = present(guideContent.notes, guide.beat, countersFrom(profile, run), guide.dismissed);
-    const next = { ...profile, guide: { beat: settled.beat, dismissed: guide.dismissed } };
+    const next = {
+      ...profile,
+      guide: {
+        beat: settled.beat,
+        dismissed: guide.dismissed,
+        known: guide.known ?? [],
+        off: guide.off ?? [],
+      },
+    };
     setProfile(next);
     void saveProfile(next);
   }
@@ -135,13 +144,34 @@ export function App() {
     const nextDismissed = leaveCurrent && !dismissed.includes(guideView.beat)
       ? [...dismissed, guideView.beat]
       : dismissed;
-    writeGuide({ beat: to, dismissed: nextDismissed });
+    const current = guideContent.notes.find((note) => note.id === guideView.beat);
+    const known = leaveCurrent ? learnedIds(current, profile.guide?.known ?? []) : (profile.guide?.known ?? []);
+    writeGuide({ beat: to, dismissed: nextDismissed, known, off: profile.guide?.off ?? [] });
+  }
+
+  function toggleSkill(id: string) {
+    if (!profile) return;
+    const off = profile.guide?.off ?? [];
+    writeGuide({
+      beat: profile.guide?.beat ?? 'playing',
+      dismissed: profile.guide?.dismissed ?? [],
+      known: profile.guide?.known ?? [],
+      off: off.includes(id) ? off.filter((item) => item !== id) : [...off, id],
+    });
   }
 
   useEffect(() => {
     if (!profile || !guideView) return;
     if (guideView.beat === (profile.guide?.beat ?? 'start')) return;
-    const next = { ...profile, guide: { beat: guideView.beat, dismissed: profile.guide?.dismissed ?? [] } };
+    const next = {
+      ...profile,
+      guide: {
+        beat: guideView.beat,
+        dismissed: profile.guide?.dismissed ?? [],
+        known: profile.guide?.known ?? [],
+        off: profile.guide?.off ?? [],
+      },
+    };
     setProfile(next);
     void saveProfile(next);
   }, [guideView?.beat, profile]);
@@ -194,6 +224,18 @@ export function App() {
         <div className="stats">
           {run && <span>Lives {run.livesRemaining}</span>}
           {profile && <span>{profile.discoveredMotifIds.length} discovered</span>}
+          {profile && guideContent.notes
+            .filter((note) => note.kind === 'skill' && profile.guide?.known?.includes(note.id))
+            .map((note) => (
+              <label key={note.id} className="skill-toggle">
+                <input
+                  type="checkbox"
+                  checked={!profile.guide?.off?.includes(note.id)}
+                  onChange={() => toggleSkill(note.id)}
+                />
+                {note.title}
+              </label>
+            ))}
         </div>
       </header>
       <main>
@@ -298,6 +340,8 @@ export function App() {
       {guideView && (
         <GuideOverlay
           view={guideView}
+          notes={guideContent.notes}
+          known={profile?.guide?.known ?? []}
           paused={Boolean(ceremony)}
           onChoose={(to) => rememberGuide(to, true)}
           onOpen={(id) => rememberGuide(id, false)}

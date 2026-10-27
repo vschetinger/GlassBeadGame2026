@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
+import { splitMentions, type Note } from '../guide/parse';
 import type { GuideView } from '../guide/walk';
-import { playerText, type Note } from '../guide/parse';
+import { TermTip } from './Term';
 
 export function GuideOverlay(props: {
   view: GuideView;
+  notes: Note[];
+  known: string[];
   paused: boolean;
   onChoose: (to: string) => void;
   onOpen: (id: string) => void;
@@ -37,7 +40,9 @@ export function GuideOverlay(props: {
           <p className="guide-kicker">{kicker(stage)}</p>
           <h2>{stage.title}</h2>
           {paragraphs(stage.body).map((paragraph) => (
-            <p key={paragraph}>{playerText(paragraph)}</p>
+            <p key={paragraph}>
+              <RichText text={paragraph} notes={props.notes} known={props.known} live />
+            </p>
           ))}
           {props.view.choices.length > 0 && (
             <div className="actions">
@@ -67,6 +72,16 @@ export function GuideOverlay(props: {
       )}
     </div>
   );
+}
+
+function RichText(props: { text: string; notes: Note[]; known: string[]; live?: boolean }) {
+  const known = new Set(props.known);
+  return splitMentions(props.text).map((part, index) => {
+    if (part.kind === 'text') return <span key={index}>{part.text}</span>;
+    const note = props.notes.find((item) => item.id === part.to);
+    if (!note || (!props.live && !known.has(part.to))) return <span key={index}>{part.label}</span>;
+    return <TermTip key={index} title={note.title} body={note.body}>{part.label}</TermTip>;
+  });
 }
 
 function kicker(stage: Note): string {

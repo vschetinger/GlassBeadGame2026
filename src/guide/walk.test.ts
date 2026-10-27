@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseNote, parseNotes } from './parse';
+import { learnedIds, parseNote, parseNotes } from './parse';
 import { present } from './walk';
 
 const eventFiles = import.meta.glob('../../content/events/*.md', {
@@ -49,6 +49,36 @@ A sentence with a [[prose-link|story]] in it.
       ['?', 'playing', 'Keep going'],
     ]);
     expect(parsed.note?.body).toContain('[[prose-link|story]]');
+    expect(parsed.note?.mentions).toEqual([{ to: 'prose-link', label: 'story' }]);
+    expect(learnedIds(parsed.note ?? undefined, [])).toEqual(['sample', 'prose-link']);
+  });
+
+  it('reads a skill as chips on a hand, and warns when the hand is unknown', () => {
+    const parsed = parseNote(`---
+id: skill.sample
+kind: skill
+show: page
+when: pair
+chips: 4
+---
+
+A [[term.rank|pair]] you have studied.
+
+? [[playing|Keep going]]
+`);
+    expect(parsed.warnings).toEqual([]);
+    expect(parsed.note?.kind).toBe('skill');
+    expect(parsed.note?.chips).toBe(4);
+    const broken = parseNote(`---
+id: skill.broken
+kind: skill
+when: mood
+---
+
+Nothing.
+`);
+    expect(broken.warnings.some((warning) => warning.includes('mood'))).toBe(true);
+    expect(broken.warnings.some((warning) => warning.includes('chips or mult'))).toBe(true);
   });
 
   it('warns on an unknown counter and does not treat a button as a test', () => {

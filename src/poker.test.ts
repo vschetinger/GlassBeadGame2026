@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { chipsForRank, evaluatePoker, majorNumberToRank, type PokerCard } from './poker';
+import { parsePokerGame } from './games/poker';
+import { applyGrants, chipsForRank, DEFAULT_HANDS, evaluatePoker, majorNumberToRank, type PokerCard } from './poker';
 import type { PokerRank, Suit } from './types';
 
 function card(id: string, rank: PokerRank, suit: Suit | null, wild = false): PokerCard {
@@ -144,5 +145,26 @@ describe('Balatro-style poker', () => {
     ]);
     expect(score.category).toBe('fullHouse');
     expect(score.pokerSubtotal).toBe((40 + 10 + 10 + 10 + 4 + 4) * 4);
+  });
+
+  it('adds skill chips before the multiplier', () => {
+    const score = evaluatePoker([card('a', 'A', 'Cups'), card('b', 'A', 'Swords')]);
+    const granted = applyGrants(score, [{ title: 'Studied hand', chips: 4, mult: 0 }]);
+    expect(granted.pokerSubtotal).toBe((10 + 11 + 11 + 4) * 2);
+    expect(granted.skillLabel).toBe('Studied hand');
+  });
+});
+
+describe('authored poker', () => {
+  it('reads the hand table in the same order and with the same numbers as the built-in rules', () => {
+    const files = import.meta.glob('../content/games/poker.md', {
+      query: '?raw',
+      import: 'default',
+      eager: true,
+    }) as Record<string, string>;
+    const raw = Object.values(files)[0];
+    const parsed = parsePokerGame(raw ?? '');
+    expect(parsed.warnings).toEqual([]);
+    expect(parsed.hands).toEqual(DEFAULT_HANDS);
   });
 });
