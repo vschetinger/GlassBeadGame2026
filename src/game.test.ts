@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commitDiscard, commitPlay, pileIds, resolveReward, returnToMap } from './game';
+import { commitDiscard, commitPlay, pileIds, resolveReward, returnToMap, selectAll } from './game';
 import { emptyProfile } from './progression';
 import { SHORT_RUN_CONFIG } from './config';
 import type { Catalog, Profile, RunState, SimilarityTables } from './types';
@@ -106,6 +106,23 @@ describe('battle actions', () => {
     expect(step.run.lastPlay?.pokerSubtotal).toBeGreaterThan(0);
     expect(step.run.battle && pileIds(step.run.battle).sort()).toEqual(before.deckMotifIds.slice().sort());
     expect(step.run.pendingRewardRegionId).toBe('region-zeus');
+  });
+
+  it('plays the whole hand, and no more than the play cap', () => {
+    const before = run();
+    before.battle!.selectedIds = [];
+    before.battle!.visibleHandIds = ['a', 'b'];
+    before.battle!.targetScore = 100000;
+    const played = commitPlay(selectAll(before), emptyProfile('test'), catalog(), tables());
+    expect(played.run.lastPlay?.motifIds).toEqual(['a', 'b']);
+    const wide = run();
+    wide.battle!.selectedIds = ['c'];
+    wide.battle!.visibleHandIds = ['a', 'b', 'c', 'd', 'e', 'f'];
+    wide.configSnapshot = {
+      ...wide.configSnapshot,
+      combat: { ...wide.configSnapshot.combat, maxCardsPerPlay: 5 },
+    };
+    expect(selectAll(wide).battle?.selectedIds).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
 
   it('does not discover a discarded card', () => {

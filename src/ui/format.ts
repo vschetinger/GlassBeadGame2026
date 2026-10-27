@@ -27,3 +27,8 @@ export function suitMark(suit: Suit): string {
 export function imageUrl(base: string, image: string): string {
   return `${base}${image}`;
 }
+
+export function deityImageUrl(imageBase: string, image: string): string {
+  if (import.meta.env.DEV) return `/pictures/${image}`;
+  return imageUrl(imageBase, image);
+}

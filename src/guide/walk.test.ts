@@ -112,7 +112,7 @@ show: coach
 
     const fighting = present(notes, 'on-map', { ...zeros, runs: 1, conquered: 1, in_battle: 1, seen_run: 8 }, []);
     expect(fighting.beat).toBe('dealt');
-    expect(fighting.stage?.at).toBe('play');
+    expect(fighting.stage?.at).toBe('play-all');
 
     const played = present(notes, 'dealt', { ...zeros, runs: 1, in_battle: 1, seen_run: 8, hands_run: 1, discovered_total: 1 }, []);
     expect(played.beat).toBe('revealed');

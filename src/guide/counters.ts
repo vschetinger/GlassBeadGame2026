@@ -21,6 +21,7 @@ export const KNOWN_HOOKS = [
   'map',
   'attack',
   'play',
+  'play-all',
   'discard',
 ] as const;
 

@@ -4,6 +4,7 @@ import {
   beginBattle,
   commitDiscard,
   commitPlay,
+  selectAll,
   createRun,
   inspectRegion,
   previewPlay,
@@ -14,6 +15,7 @@ import {
 import { countersFrom } from './guide/counters';
 import { guideContent } from './guide/load';
 import { learnedIds } from './guide/parse';
+import { togglePower } from './guide/skills';
 import { present } from './guide/walk';
 import { loadGameData } from './loadData';
 import { exportSave, loadProfile, loadRun, saveProfile, saveRun } from './persistence';
@@ -172,6 +174,13 @@ export function App() {
     });
   }
 
+  function toggleRunPower(id: string) {
+    if (!run) return;
+    const next = togglePower(run, id);
+    setRun(next);
+    void saveRun(next);
+  }
+
   function toggleSkill(id: string) {
     if (!profile) return;
     const off = profile.guide?.off ?? [];
@@ -213,7 +222,8 @@ export function App() {
       if (screen !== 'battle' || !run?.battle || run.battle.status !== 'active' || !catalog || !tables || !profile) return;
       if (event.key === 'Enter') {
         event.preventDefault();
-        act(() => commitPlay(run, profile, catalog, tables));
+        const chosen = run.battle.selectedIds.length > 0 ? run : selectAll(run);
+        act(() => commitPlay(chosen, profile, catalog, tables));
       } else if (event.key === 'Backspace' || event.key === 'Delete') {
         event.preventDefault();
         act(() => commitDiscard(run, profile));
@@ -257,13 +267,25 @@ export function App() {
           {run && <span>Lives {run.livesRemaining}</span>}
           {profile && <span>{profile.discoveredMotifIds.length} discovered</span>}
           {profile && guideContent.notes
-            .filter((note) => note.kind === 'skill' && profile.guide?.known?.includes(note.id))
+            .filter((note) => note.kind === 'skill' && !note.god && profile.guide?.known?.includes(note.id))
             .map((note) => (
               <label key={note.id} className="skill-toggle">
                 <input
                   type="checkbox"
                   checked={!profile.guide?.off?.includes(note.id)}
                   onChange={() => toggleSkill(note.id)}
+                />
+                {note.title}
+              </label>
+            ))}
+          {run && guideContent.notes
+            .filter((note) => note.kind === 'skill' && note.god && run.powers?.includes(note.id))
+            .map((note) => (
+              <label key={note.id} className="skill-toggle">
+                <input
+                  type="checkbox"
+                  checked={!run.powersOff?.includes(note.id)}
+                  onChange={() => toggleRunPower(note.id)}
                 />
                 {note.title}
               </label>
@@ -306,6 +328,7 @@ export function App() {
                 scoreHold={ceremony?.total ?? 0}
                 locked={Boolean(ceremony)}
                 onToggle={(motifId) => setRun(toggleSelect(run, motifId))}
+                onPlayAll={() => tables && act(() => commitPlay(selectAll(run), profile, catalog, tables))}
                 onPlay={() => tables && act(() => commitPlay(run, profile, catalog, tables))}
                 onDiscard={() => act(() => commitDiscard(run, profile))}
                 onReturn={() => act(() => ({ run: returnToMap(run), profile }))}

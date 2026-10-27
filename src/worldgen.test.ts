@@ -156,6 +156,7 @@ describe('run creation', () => {
     const { run } = createRun('castalia', small, emptyProfile('test'), catalog, data.tables);
     const home = run.regions.find((region) => region.id === run.startRegionId)!;
     expect(run.deckMotifIds).toHaveLength(2);
+    expect(run.powers).toEqual([]);
     expect(run.deckMotifIds.every((id) => home.motifIds.includes(id))).toBe(true);
     const open = attackableRegionIds(run);
     expect(open.length).toBeGreaterThan(0);

@@ -5,7 +5,8 @@ import { authoredDefault as DEFAULT_CONFIG } from '../balance/load';
 import { chipValue } from '../games/load';
 import { allocationError, earnedPoints, spentPoints } from '../progression';
 import { guideContent } from '../guide/load';
-import { faceLabel, imageUrl, shortRank, suitMark } from './format';
+import { powerOffers } from '../guide/skills';
+import { deityImageUrl, faceLabel, imageUrl, shortRank, suitMark } from './format';
 import { TermTip } from './Term';
 
 function FaceIndex(props: { motif: MotifRecord }) {
@@ -73,6 +74,22 @@ function RankSeal(props: { profile: Profile }) {
   const note = guideContent.notes.find((item) => item.bind === 'seal' && known.has(item.id));
   if (!note) return <span className="seal" aria-hidden="true">?</span>;
   return <TermTip className="seal" title={note.title} body={note.body}>?</TermTip>;
+}
+
+function PowerOffer(props: { deityId: string; earned?: boolean }) {
+  const offers = powerOffers(guideContent.notes, props.deityId);
+  if (offers.length === 0) return null;
+  return (
+    <>
+      {offers.map((offer) => (
+        <div className="power-offer" key={offer.id}>
+          <p className="meta">{props.earned ? 'This victory also grants' : 'If you win'}</p>
+          <strong>{offer.title}</strong>
+          <p>{offer.text}</p>
+        </div>
+      ))}
+    </>
+  );
 }
 
 export function HomeScreen(props: {
@@ -162,9 +179,15 @@ export function MapScreen(props: {
         })}
       </svg>
       <aside className="panel">
+        {deity?.image && (
+          <img className="deity-portrait" src={deityImageUrl(props.catalog.imageBase, deity.image)} alt="" />
+        )}
         <h2>{deity?.name}</h2>
         <p className="meta">{deity?.pantheon} · hop {selected.hopDistance}{selected.targetScore > 0 ? ` · target ${selected.targetScore}` : ''}</p>
         <p>{deity?.description}</p>
+        {attackable.has(selected.id) && deity && (
+          <PowerOffer deityId={deity.id} />
+        )}
         <div className="actions">
           <button
             className="primary"
@@ -193,6 +216,7 @@ export function BattleScreen(props: {
   scoreHold?: number;
   locked?: boolean;
   onToggle: (motifId: string) => void;
+  onPlayAll: () => void;
   onPlay: () => void;
   onDiscard: () => void;
   onReturn: () => void;
@@ -204,6 +228,9 @@ export function BattleScreen(props: {
   return (
     <section>
       <div className="battle-head">
+        {deity?.image && (
+          <img className="deity-portrait" src={deityImageUrl(props.catalog.imageBase, deity.image)} alt="" />
+        )}
         <div>
           <h2>{deity?.name}</h2>
           <p className="meta">{deity?.description}</p>
@@ -236,7 +263,10 @@ export function BattleScreen(props: {
           <button className="primary" onClick={props.onReturn}>Return to map</button>
         ) : (
           <>
-            <button className="primary" data-hook="play" disabled={props.locked || battle.selectedIds.length < 1 || battle.handsRemaining < 1} onClick={props.onPlay}>
+            <button className="primary" data-hook="play-all" disabled={props.locked || battle.visibleHandIds.length < 1 || battle.handsRemaining < 1} onClick={props.onPlayAll}>
+              Play all
+            </button>
+            <button data-hook="play" disabled={props.locked || battle.selectedIds.length < 1 || battle.handsRemaining < 1} onClick={props.onPlay}>
               Play {battle.selectedIds.length || ''}
             </button>
             <button data-hook="discard" disabled={props.locked || battle.selectedIds.length < 1 || battle.discardsRemaining < 1} onClick={props.onDiscard}>
@@ -439,6 +469,7 @@ export function RewardScreen(props: {
           ? 'Choose one new card from this land. It joins the deck. Nothing changes until you confirm.'
           : 'Choose one motif to add from this domain, or one card to remove from your deck. Nothing changes until you confirm.'}
       </p>
+      {deity && <PowerOffer deityId={deity.id} earned />}
       {props.run.lastPlay && <PlayBreakdown play={props.run.lastPlay} catalog={props.catalog} />}
       <div className="split">
         <div>

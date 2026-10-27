@@ -33,6 +33,7 @@ Frontmatter is flat `key: value` lines between `---`. There are no lists, no nes
 | `bind` | no | Once this note is known, hover the named mark to read it. The only mark today is `seal`, the ? on a card whose rank is hidden. |
 | `when` | on a skill | A hand id from `content/games/poker.md`, or `any`. |
 | `chips` | on a skill | Whole number added to the hand's chips before the multiplier. |
+| `god` | on a skill | Catalog id of the god who grants this skill, such as `Q1150`. Leave it out for a library skill. |
 | `mult` | on a skill | Whole number added to the hand's multiplier. |
 
 `id` may contain dots (`lesson.fifty`). Do not use spaces.
@@ -124,6 +125,30 @@ Every hand scores 4 extra chips before the multiplier.
 ```
 
 Offer it from `playing` with a `+` line, the same way as a lesson. Closing the skill turns it on. The bar then shows its name with a checkbox. The player can turn it off and on. A skill that is off does not change the score. Chips from every skill that is on are added together, then the multipliers, then the hand is `(hand chips + card chips + skill chips) × (hand multiplier + skill multipliers)`.
+
+## God powers
+
+A skill can belong to one god. The value of `god` is that god's id in the catalog, such as `Q1150` for Mercury. Use the id, not the display name. Do not offer the skill from `playing`. The body is the sentence the player reads on the map.
+
+```markdown
+---
+id: skill.mercury-path
+title: Mercury's path
+kind: skill
+show: page
+when: highCard
+chips: 6
+god: Q1150
+---
+
+Your high card hands gain 6 chips before the multiplier.
+
+? [[playing|Keep playing]]
+```
+
+While that god's land can be attacked, the map shows the title and the body next to the score target. Winning the land grants the skill for the rest of that run, in addition to the card from the land. The bar shows a checkbox for the rest of the run. A new run does not keep it. A library skill, such as Studied hand, still stays in the library. A god with no skill note shows no power. `chips` and `mult` work the same way as on any other skill, and `when` is the hand that receives them.
+
+An unfinished run that was saved before god powers existed has no power list. It can still earn one the next time it conquers a god who has a skill. Targets that were already set stay as they were. A power changes the estimate only for lands that open afterward.
 
 ## The poker game
 
@@ -230,7 +255,8 @@ The player can close any dialog, coach, or page with ×. Closing hides that note
 | `continue` | Continue, only when a run exists. |
 | `map` | The world map, only while the map is open. |
 | `attack` | The Attack button on the map. |
-| `play` | Play, during a fight. |
+| `play` | Play the selected cards, during a fight. |
+| `play-all` | Play all, which sends every card in the hand, up to the play cap. |
 | `discard` | Discard, during a fight. |
 | `library` | Encyclopedia in the top bar. |
 | `deck` | Deck in the top bar, only during a run. |
@@ -261,6 +287,9 @@ Do not reuse these ids.
 | `lesson.question-mark` | What `?` means on a card. Names `term.rank`. |
 | `term.rank` | The hover text for a hidden rank. Bound to the seal. |
 | `skill.studied-hand` | A skill: +4 chips on every hand, and a checkbox. |
+| `skill.mercury-path` | Mercury, `Q1150`. High card gains 6 chips. A god power, not a lesson. |
+| `skill.juno-pair` | Juno, `Q125046`. Pairs gain 1 multiplier. A god power. |
+| `skill.vulcan-forge` | Vulcan, `Q4640`. Three of a kind gains 12 chips. A god power. |
 | `lesson.this-run` | Seen this run versus the library. |
 | `lesson.frontier` | The map is a neighbor graph. |
 | `lesson.fifty` | Fifty motifs seen. |

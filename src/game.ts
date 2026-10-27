@@ -1,7 +1,7 @@
 import { validateConfig } from './config';
 import { chipValue, pokerHands } from './games/load';
 import { guideContent } from './guide/load';
-import { grantsFor } from './guide/skills';
+import { awardPowers, grantsFor } from './guide/skills';
 import { applyGrants, evaluatePoker, type PokerScore } from './poker';
 import { resonate } from './resonance';
 import { mulberry32, rngFromSeed, type Rng } from './rng';
@@ -101,7 +101,7 @@ export function lockFrontier(run: RunState, profile: Profile, catalog: Catalog):
     cards,
     pokerHands,
     run.configSnapshot.combat.maxCardsPerPlay,
-    (hand) => grantsFor(guideContent.notes, profile, hand),
+    (hand) => grantsFor(guideContent.notes, profile, hand, run),
   );
   const scores = waveScores(best * hands, open.length, difficulty.waveLow, difficulty.waveHigh, difficulty.scoreStep);
   if (scores.length !== open.length) return run;
@@ -162,6 +162,8 @@ export function createRun(
     status: 'active',
     handsPlayed: 0,
     seenMotifIds: [],
+    powers: [],
+    powersOff: [],
   };
   return { run: lockFrontier(run, nextProfile, catalog), profile: nextProfile };
 }
@@ -201,6 +203,13 @@ export function beginBattle(run: RunState, profile: Profile, regionId: string, c
     run: see({ ...prepared, rngState: rng.state(), battle, lastPlay: undefined }, battle.visibleHandIds),
     profile: withEncounters(profile, battle.visibleHandIds),
   };
+}
+
+export function selectAll(run: RunState): RunState {
+  const battle = run.battle;
+  if (!battle || battle.status !== 'active') return run;
+  const cap = Math.max(1, run.configSnapshot.combat.maxCardsPerPlay);
+  return { ...run, battle: { ...battle, selectedIds: battle.visibleHandIds.slice(0, cap) } };
 }
 
 export function toggleSelect(run: RunState, motifId: string): RunState {
@@ -259,7 +268,7 @@ export function commitPlay(
       chips: chipValue(motif.rank),
     };
   });
-  const poker = scoreHand(cards, profile, battle.game);
+  const poker = scoreHand(cards, profile, battle.game, run);
   const threshold = config.texts.similarityThreshold ?? catalog.textThreshold;
   const resonance = resonate(catalog, tables, {
     playedMotifIds: selected,
@@ -388,8 +397,10 @@ export function resolveReward(
   const nextProfile = won
     ? { ...profile, statistics: { ...profile.statistics, wins: profile.statistics.wins + 1 } }
     : profile;
+  const region = run.regions.find((item) => item.id === run.pendingRewardRegionId);
+  const granted = awardPowers(run, region?.deityId, guideContent.notes);
   const settled: RunState = {
-    ...run,
+    ...granted,
     deckMotifIds: deck,
     conqueredRegionIds: conquered,
     pendingRewardRegionId: undefined,
@@ -416,7 +427,7 @@ export function previewPlay(
     const motif = catalog.motifs[catalog.motifIndex.get(id)!] as MotifRecord;
     return { id, rank: motif.rank, suit: motif.suit, wild: motif.wild, chips: chipValue(motif.rank) };
   });
-  const poker = scoreHand(cards, profile, battle.game);
+  const poker = scoreHand(cards, profile, battle.game, run);
   const resonance = resonate(catalog, tables, {
     playedMotifIds: battle.selectedIds,
     discoveredTextIds: new Set(profile.discoveredTextIds),
@@ -426,10 +437,10 @@ export function previewPlay(
   return { poker, folkloreBonus: resonance.bonus };
 }
 
-function scoreHand(cards: Parameters<typeof evaluatePoker>[0], profile: Profile, game: string | undefined): PokerScore {
+function scoreHand(cards: Parameters<typeof evaluatePoker>[0], profile: Profile, game: string | undefined, run: RunState): PokerScore {
   if (game && game !== 'poker') console.warn(`No ruleset named ${game}; this fight uses poker.`);
   const dealt = evaluatePoker(cards, pokerHands);
-  return applyGrants(dealt, grantsFor(guideContent.notes, profile, dealt.category));
+  return applyGrants(dealt, grantsFor(guideContent.notes, profile, dealt.category, run));
 }
 
 export function pileIds(battle: BattleState): string[] {

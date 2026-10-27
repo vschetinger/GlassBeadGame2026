@@ -26,6 +26,7 @@ export interface Note {
   when?: string;
   chips?: number;
   mult?: number;
+  god?: string;
   body: string;
   edges: Edge[];
   mentions: Mention[];
@@ -137,6 +138,8 @@ export function parseNote(raw: string, source = 'note'): { note: Note | null; wa
   if (when && when !== 'any' && !HANDS.has(when)) warnings.push(`${id}: unknown hand "${when}"`);
   const chips = readCount(meta.chips, id, 'chips', warnings);
   const mult = readCount(meta.mult, id, 'mult', warnings);
+  const god = meta.god?.trim() || undefined;
+  if (god && kind !== 'skill') warnings.push(`${id}: god is only meaningful on a skill`);
   if (kind === 'skill' && chips == null && mult == null) warnings.push(`${id}: a skill needs chips or mult`);
   const cleaned = prose.join('\n').trim();
   return {
@@ -150,6 +153,7 @@ export function parseNote(raw: string, source = 'note'): { note: Note | null; wa
       when,
       chips,
       mult,
+      god,
       body: cleaned,
       edges,
       mentions: mentionsIn(cleaned),

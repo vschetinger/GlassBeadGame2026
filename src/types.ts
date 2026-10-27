@@ -19,11 +19,26 @@ export interface MotifRecord {
   wild: boolean;
 }
 
+export interface PictureBead {
+  prompt: string;
+  style: string;
+  negativePrompt: string;
+  model: string;
+  scheduler: string;
+  seed: number;
+  steps: number;
+  guidance: number;
+  width: number;
+  height: number;
+}
+
 export interface DeityRecord {
   id: string;
   name: string;
   pantheon: string;
   description: string;
+  image?: string;
+  bead?: PictureBead;
 }
 
 export interface TextRecord {
@@ -49,6 +64,7 @@ export interface CatalogFile {
     deities: number;
     texts: number;
     missingImages: number;
+    missingDeityImages?: number;
   };
   motifs: MotifRecord[];
   deities: DeityRecord[];
@@ -226,6 +242,8 @@ export interface RunState {
   status: 'active' | 'won' | 'lost';
   handsPlayed: number;
   seenMotifIds?: string[];
+  powers?: string[];
+  powersOff?: string[];
   lastPlay?: LastPlay;
 }
 
