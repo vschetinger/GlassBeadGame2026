@@ -37,6 +37,12 @@ function withEncounters(profile: Profile, ids: string[]): Profile {
   return { ...profile, encounteredMotifIds };
 }
 
+function see(run: RunState, ids: string[]): RunState {
+  const seenMotifIds = unique(run.seenMotifIds ?? [], ids);
+  if (seenMotifIds.length === (run.seenMotifIds ?? []).length) return run;
+  return { ...run, seenMotifIds };
+}
+
 function cloneBattle(battle: BattleState): BattleState {
   return {
     ...battle,
@@ -109,6 +115,7 @@ export function createRun(
     livesRemaining: config.combat.baseLives + profile.upgradeAllocation.lives,
     status: 'active',
     handsPlayed: 0,
+    seenMotifIds: [],
   };
   return {
     run,
@@ -119,10 +126,13 @@ export function createRun(
   };
 }
 
-export function inspectRegion(profile: Profile, run: RunState, regionId: string): Profile {
+export function inspectRegion(profile: Profile, run: RunState, regionId: string): StepResult {
   const region = run.regions.find((item) => item.id === regionId);
-  if (!region) return profile;
-  return withEncounters(profile, region.motifIds);
+  if (!region) return { run, profile };
+  return {
+    run: see(run, region.motifIds),
+    profile: withEncounters(profile, region.motifIds),
+  };
 }
 
 export function beginBattle(run: RunState, profile: Profile, regionId: string, config: BalanceConfig): StepResult {
@@ -146,7 +156,7 @@ export function beginBattle(run: RunState, profile: Profile, regionId: string, c
   };
   drawUp(battle, rng, config);
   return {
-    run: { ...run, rngState: rng.state(), battle, lastPlay: undefined },
+    run: see({ ...run, rngState: rng.state(), battle, lastPlay: undefined }, battle.visibleHandIds),
     profile: withEncounters(profile, battle.visibleHandIds),
   };
 }
@@ -254,13 +264,13 @@ export function commitPlay(
     discoveredMotifIds: selected.filter((id) => !profile.discoveredMotifIds.includes(id)),
     unlockedTextIds: resonance.newlyUnlockedIds,
   };
-  let nextRun: RunState = {
+  let nextRun: RunState = see({
     ...run,
     rngState: rng.state(),
     battle: nextBattle,
     handsPlayed: run.handsPlayed + 1,
     lastPlay,
-  };
+  }, [...selected, ...nextBattle.visibleHandIds]);
   if (won) return finishBattle(nextRun, nextProfile, nextBattle);
   if (nextBattle.handsRemaining <= 0) return finishBattle(nextRun, nextProfile, nextBattle);
   return { run: nextRun, profile: nextProfile };
@@ -281,12 +291,12 @@ export function commitDiscard(run: RunState, profile: Profile): StepResult {
   nextBattle.discardsRemaining -= 1;
   drawUp(nextBattle, rng, config);
   return {
-    run: {
+    run: see({
       ...run,
       rngState: rng.state(),
       battle: nextBattle,
       lastPlay: { kind: 'discard', motifIds: selected },
-    },
+    }, nextBattle.visibleHandIds),
     profile: withEncounters(profile, nextBattle.visibleHandIds),
   };
 }

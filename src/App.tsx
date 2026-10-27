@@ -11,10 +11,13 @@ import {
   returnToMap,
   toggleSelect,
 } from './game';
+import { countersFrom } from './guide/counters';
+import { guideContent } from './guide/load';
+import { present } from './guide/walk';
 import { loadGameData } from './loadData';
 import { exportSave, loadProfile, loadRun, saveProfile, saveRun } from './persistence';
 import { emptyProfile, reconcileProfile } from './progression';
-import type { BalanceConfig, Catalog, LastPlay, Profile, RunState, SimilarityTables, UpgradeAllocation } from './types';
+import type { BalanceConfig, Catalog, GuideMemory, LastPlay, Profile, RunState, SimilarityTables, UpgradeAllocation } from './types';
 import {
   BattleScreen,
   DeckScreen,
@@ -26,6 +29,7 @@ import {
   RewardScreen,
   ScoreCeremony,
 } from './ui/screens';
+import { GuideOverlay } from './ui/Guide';
 
 type View = 'auto' | 'home' | 'encyclopedia' | 'progression' | 'deck';
 
@@ -112,6 +116,35 @@ export function App() {
   }
 
   const screen = screenFor(view, run);
+  const guideView = profile
+    ? present(guideContent.notes, profile.guide?.beat ?? 'start', countersFrom(profile, run), profile.guide?.dismissed ?? [])
+    : null;
+  const guideBlocksKeys = guideView?.stage?.show === 'dialog' || guideView?.stage?.show === 'page';
+
+  function writeGuide(guide: GuideMemory) {
+    if (!profile) return;
+    const settled = present(guideContent.notes, guide.beat, countersFrom(profile, run), guide.dismissed);
+    const next = { ...profile, guide: { beat: settled.beat, dismissed: guide.dismissed } };
+    setProfile(next);
+    void saveProfile(next);
+  }
+
+  function rememberGuide(to: string, leaveCurrent: boolean) {
+    if (!profile || !guideView) return;
+    const dismissed = profile.guide?.dismissed ?? [];
+    const nextDismissed = leaveCurrent && !dismissed.includes(guideView.beat)
+      ? [...dismissed, guideView.beat]
+      : dismissed;
+    writeGuide({ beat: to, dismissed: nextDismissed });
+  }
+
+  useEffect(() => {
+    if (!profile || !guideView) return;
+    if (guideView.beat === (profile.guide?.beat ?? 'start')) return;
+    const next = { ...profile, guide: { beat: guideView.beat, dismissed: profile.guide?.dismissed ?? [] } };
+    setProfile(next);
+    void saveProfile(next);
+  }, [guideView?.beat, profile]);
 
   useEffect(() => {
     if (!run || hydrated.current) return;
@@ -123,7 +156,7 @@ export function App() {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
-      if (ceremony) return;
+      if (ceremony || guideBlocksKeys) return;
       if (screen !== 'battle' || !run?.battle || run.battle.status !== 'active' || !catalog || !tables || !profile) return;
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -154,8 +187,8 @@ export function App() {
               {run.pendingRewardRegionId ? 'Reward' : run.battle?.status === 'active' ? 'Battle' : 'Map'}
             </button>
           )}
-          {run && <button onClick={() => setView('deck')}>Deck</button>}
-          <button onClick={() => setView('encyclopedia')}>Encyclopedia</button>
+          {run && <button data-hook="deck" onClick={() => setView('deck')}>Deck</button>}
+          <button data-hook="library" onClick={() => setView('encyclopedia')}>Encyclopedia</button>
           <button onClick={() => setView('progression')}>Progression</button>
         </nav>
         <div className="stats">
@@ -182,8 +215,10 @@ export function App() {
                 profile={profile}
                 onInspect={(regionId) => {
                   const next = inspectRegion(profile, run, regionId);
-                  setProfile(next);
-                  void saveProfile(next);
+                  setProfile(next.profile);
+                  setRun(next.run);
+                  void saveProfile(next.profile);
+                  void saveRun(next.run);
                 }}
                 onAttack={(regionId) => act(() => beginBattle(run, profile, regionId, run.configSnapshot))}
               />
@@ -260,6 +295,19 @@ export function App() {
           </>
         )}
       </main>
+      {guideView && (
+        <GuideOverlay
+          view={guideView}
+          paused={Boolean(ceremony)}
+          onChoose={(to) => rememberGuide(to, true)}
+          onOpen={(id) => rememberGuide(id, false)}
+          onDismiss={(id) => {
+            const dismissed = profile?.guide?.dismissed ?? [];
+            if (dismissed.includes(id) || !profile) return;
+            writeGuide({ beat: guideView.beat, dismissed: [...dismissed, id] });
+          }}
+        />
+      )}
       {ceremony && catalog && profile && (
         <ScoreCeremony
           play={ceremony}

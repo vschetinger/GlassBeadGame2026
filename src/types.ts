@@ -128,6 +128,11 @@ export interface UpgradeAllocation {
   lives: number;
 }
 
+export interface GuideMemory {
+  beat: string;
+  dismissed: string[];
+}
+
 export interface Profile {
   schemaVersion: 1;
   catalogVersion: string;
@@ -140,6 +145,7 @@ export interface Profile {
     wins: number;
     losses: number;
   };
+  guide?: GuideMemory;
 }
 
 export interface RegionState {
@@ -209,6 +215,7 @@ export interface RunState {
   pendingRewardRegionId?: string;
   status: 'active' | 'won' | 'lost';
   handsPlayed: number;
+  seenMotifIds?: string[];
   lastPlay?: LastPlay;
 }
 

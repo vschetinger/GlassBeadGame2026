@@ -9,6 +9,7 @@ export function emptyProfile(catalogVersion: string): Profile {
     discoveredTextIds: [],
     upgradeAllocation: { hands: 0, discards: 0, lives: 0 },
     statistics: { runs: 0, wins: 0, losses: 0 },
+    guide: { beat: 'start', dismissed: [] },
   };
 }
 
@@ -40,6 +41,9 @@ export function reconcileProfile(
     if (!key) break;
     allocation = { ...allocation, [key]: allocation[key] - 1 };
   }
+  const dismissed = Array.isArray(profile.guide?.dismissed)
+    ? profile.guide.dismissed.filter((id) => typeof id === 'string')
+    : [];
   return {
     ...profile,
     catalogVersion,
@@ -47,6 +51,10 @@ export function reconcileProfile(
     encounteredMotifIds,
     discoveredTextIds,
     upgradeAllocation: allocation,
+    guide: {
+      beat: profile.guide?.beat || 'start',
+      dismissed,
+    },
   };
 }
 

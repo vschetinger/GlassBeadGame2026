@@ -76,10 +76,10 @@ export function HomeScreen(props: {
       <p className="lede">
         Each run draws two hundred folklore motifs and twenty deities. You conquer the neighboring gods with poker hands. Playing a card reveals its Tarot face forever. The deck itself does not survive the run.
       </p>
-      <div className="home-actions">
-        {props.canContinue && <button className="primary" onClick={props.onContinue}>Continue</button>}
-        <button className="primary" onClick={() => props.onNew('full')}>New run</button>
-        <button onClick={() => props.onNew('short')}>Short run</button>
+      <div className="home-actions" data-hook="start-run">
+        {props.canContinue && <button className="primary" data-hook="continue" onClick={props.onContinue}>Continue</button>}
+        <button className="primary" data-hook="new-run" onClick={() => props.onNew('full')}>New run</button>
+        <button data-hook="short-run" onClick={() => props.onNew('short')}>Short run</button>
       </div>
       <ul className="definitions">
         <li><strong>Encountered</strong> You have seen the picture and the name.</li>
@@ -121,7 +121,7 @@ export function MapScreen(props: {
 
   return (
     <div className="map-layout">
-      <svg className="map" viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`} role="img" aria-label="World map">
+      <svg className="map" data-hook="map" viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`} role="img" aria-label="World map">
         {visibleRegions.map((region) => {
           const state = regionState(region.id, region.id === props.run.startRegionId);
           const god = props.catalog.deities[props.catalog.deityIndex.get(region.deityId)!];
@@ -156,19 +156,20 @@ export function MapScreen(props: {
         <h2>{deity?.name}</h2>
         <p className="meta">{deity?.pantheon} · hop {selected.hopDistance} · {selected.motifIds.length} motifs · target {selected.targetScore}</p>
         <p>{deity?.description}</p>
-        <div className="gallery">
-          {selected.motifIds.map((id) => (
-            <MotifCard key={id} catalog={props.catalog} profile={props.profile} motifId={id} />
-          ))}
-        </div>
         <div className="actions">
           <button
             className="primary"
+            data-hook="attack"
             disabled={!attackable.has(selected.id)}
             onClick={() => props.onAttack(selected.id)}
           >
             {conquered.has(selected.id) ? 'Already conquered' : attackable.has(selected.id) ? 'Attack' : 'Beyond the frontier'}
           </button>
+        </div>
+        <div className="gallery">
+          {selected.motifIds.map((id) => (
+            <MotifCard key={id} catalog={props.catalog} profile={props.profile} motifId={id} />
+          ))}
         </div>
       </aside>
     </div>
@@ -226,10 +227,10 @@ export function BattleScreen(props: {
           <button className="primary" onClick={props.onReturn}>Return to map</button>
         ) : (
           <>
-            <button className="primary" disabled={props.locked || battle.selectedIds.length < 1 || battle.handsRemaining < 1} onClick={props.onPlay}>
+            <button className="primary" data-hook="play" disabled={props.locked || battle.selectedIds.length < 1 || battle.handsRemaining < 1} onClick={props.onPlay}>
               Play {battle.selectedIds.length || ''}
             </button>
-            <button disabled={props.locked || battle.selectedIds.length < 1 || battle.discardsRemaining < 1} onClick={props.onDiscard}>
+            <button data-hook="discard" disabled={props.locked || battle.selectedIds.length < 1 || battle.discardsRemaining < 1} onClick={props.onDiscard}>
               Discard
             </button>
           </>
