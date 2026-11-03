@@ -1,0 +1,66 @@
+{
+  "counts": {
+    "motifs": 1265,
+    "majors": 593,
+    "minors": 672,
+    "deities": 603,
+    "texts": 1518,
+    "missingImages": 0,
+    "missingDeityImages": 0
+  },
+  "embeddingModel": "text-embedding-3-large",
+  "thresholdReport": {
+    "chosen": {
+      "threshold": 0.6554140448570251,
+      "meanQualifyingTexts": 0.3175
+    },
+    "candidates": [
+      {
+        "threshold": 0.634326159954071,
+        "meanQualifyingTexts": 1.9325
+      },
+      {
+        "threshold": 0.6369621455669403,
+        "meanQualifyingTexts": 1.32
+      },
+      {
+        "threshold": 0.6395981311798096,
+        "meanQualifyingTexts": 0.875
+      },
+      {
+        "threshold": 0.6422341167926788,
+        "meanQualifyingTexts": 1.1375
+      },
+      {
+        "threshold": 0.6448701024055481,
+        "meanQualifyingTexts": 0.575
+      },
+      {
+        "threshold": 0.6475060880184174,
+        "meanQualifyingTexts": 0.845
+      },
+      {
+        "threshold": 0.6501420736312866,
+        "meanQualifyingTexts": 0.6825
+      },
+      {
+        "threshold": 0.6527780592441559,
+        "meanQualifyingTexts": 0.2875
+      },
+      {
+        "threshold": 0.6554140448570251,
+        "meanQualifyingTexts": 0.3175
+      }
+    ],
+    "quantiles": {
+      "p50": 0.4981169104576111,
+      "p90": 0.5699294209480286,
+      "p95": 0.5905174016952515,
+      "p99": 0.6296641230583191,
+      "p995": 0.6451809406280518,
+      "p999": 0.6752651333808899
+    }
+  },
+  "catalogBytes": 7636302,
+  "similarityBytes": 11124534
+}
